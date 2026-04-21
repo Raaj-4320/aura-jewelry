@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A jewelry item in the boutique",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the jewelry piece" },
+        "slug": { "type": "string", "description": "URL-friendly name" },
+        "category": { "type": "string", "description": "Main category" },
+        "subcategory": { "type": "string", "description": "Subcategory or material" },
+        "price": { "type": "number", "description": "Price in INR" },
+        "priceOnRequest": { "type": "boolean", "description": "If true, show 'Price on Request'" },
+        "shortDescription": { "type": "string", "description": "Brief summary" },
+        "fullDescription": { "type": "string", "description": "Detailed description" },
+        "thumbnailImage": { "type": "string", "description": "Main image URL" },
+        "galleryImages": { "type": "array", "items": { "type": "string" }, "description": "Additional image URLs" },
+        "featured": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "slug", "category", "price", "thumbnailImage"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User account information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "wishlist": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global application settings",
+      "type": "object",
+      "properties": {
+        "brandName": { "type": "string" },
+        "brandDescription": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "instagramUrl": { "type": "string" },
+        "cloudinaryCloudName": { "type": "string" },
+        "cloudinaryUploadPreset": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "products": {
+      "schema": "Product",
+      "description": "Collection of all jewelry products"
+    },
+    "users": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles"
+    },
+    "settings": {
+      "schema": "Settings",
+      "description": "Global application settings (stored in 'general' doc)"
+    }
+  }
+}

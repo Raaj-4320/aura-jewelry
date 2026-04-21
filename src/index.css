@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-rose-gold: #E5B4A2;
+  --color-rose-gold-light: #F8E8E2;
+  --color-ivory: #FDFCFB;
+  --color-blush: #FFF5F2;
+  --color-champagne: #F7E7CE;
+  --color-taupe: #8E8279;
+  --color-warm-gray: #F5F5F5;
+  --color-deep-taupe: #4A4440;
+}
+
+@layer base {
+  body {
+    @apply bg-ivory text-deep-taupe font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight;
+  }
+}
+
+@utility btn-premium {
+  @apply px-6 py-2.5 rounded-full transition-all duration-300 font-medium text-sm tracking-wide;
+}
+
+@utility btn-primary {
+  @apply btn-premium bg-rose-gold text-white;
+  &:hover {
+    @apply opacity-90;
+  }
+  &:active {
+    @apply scale-95;
+  }
+}
+
+@utility btn-secondary {
+  @apply btn-premium bg-white border border-rose-gold/20 text-taupe;
+  &:hover {
+    @apply bg-rose-gold-light/30;
+  }
+  &:active {
+    @apply scale-95;
+  }
+}
+
+@utility glass-card {
+  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-sm rounded-2xl;
+}

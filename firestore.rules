@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: products
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - slug: string (required, unique-ish)
+    //   - category: string (required)
+    //   - subcategory: string
+    //   - price: number (positive)
+    //   - priceOnRequest: bool
+    //   - shortDescription: string (max 500)
+    //   - fullDescription: string (max 5000)
+    //   - thumbnailImage: string (URL)
+    //   - galleryImages: list of strings (URLs)
+    //   - featured: bool
+    //   - active: bool
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
+    //
+    // Collection: users
+    // Document ID: auth.uid
+    // Fields:
+    //   - uid: string
+    //   - email: string
+    //   - role: string (admin/user)
+    //   - wishlist: list of strings (product IDs)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "raj.golakiya0@gmail.com");
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.slug is string && data.slug.size() > 0 &&
+             data.category is string &&
+             data.price is number && data.price >= 0 &&
+             data.thumbnailImage is string &&
+             data.active is bool;
+    }
+
+    function isValidUser(data) {
+      return data.uid is string && data.uid == request.auth.uid &&
+             data.email is string &&
+             data.role in ['admin', 'user'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /products/{productId} {
+      // Anyone can read active products
+      allow read: if resource.data.active == true || isAdmin();
+      
+      // Only admins can write
+      allow create: if isAdmin() && isValidProduct(request.resource.data);
+      allow update: if isAdmin() && isValidProduct(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      // Users can read/write their own profile
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}
