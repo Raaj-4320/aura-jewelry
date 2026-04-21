@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
+import {
   Heart, 
   MessageCircle, 
   Instagram, 
@@ -14,34 +14,41 @@ import {
   Share2
 } from 'lucide-react';
 import { Product } from '../types';
-import { getProductBySlug, getProducts } from '../services/firebaseService';
+import { getDisplayProductBySlug, getDisplayProducts } from '../services/catalogService';
 import { formatPrice, cn } from '../lib/utils';
-import { WHATSAPP_NUMBER } from '../constants';
+import { useStoreSettings } from '../contexts/StoreSettingsContext';
 import ProductCard from '../components/ProductCard';
 import toast from 'react-hot-toast';
+import { JEWELRY_IMAGE_FALLBACK } from '../constants';
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [activeImage, setActiveImage] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const { settings } = useStoreSettings();
 
   useEffect(() => {
     const fetchProduct = async () => {
       if (!slug) return;
       setLoading(true);
       try {
-        const data = await getProductBySlug(slug);
+        const data = await getDisplayProductBySlug(slug);
         if (data) {
           setProduct(data);
           // Fetch related products
-          const related = await getProducts({ category: data.category, limit: 4 });
-          setRelatedProducts(related?.filter(p => p.id !== data.id) || []);
+          const allProducts = await getDisplayProducts();
+          const related = allProducts
+            .filter((p) => p.category === data.category && p.id !== data.id)
+            .slice(0, 4);
+          setRelatedProducts(related);
         }
       } catch (error) {
         console.error(error);
+        setLoadError(error instanceof Error ? error.message : 'Unable to load product');
       } finally {
         setLoading(false);
       }
@@ -62,15 +69,23 @@ export default function ProductDetail() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-ivory space-y-6">
         <h2 className="text-2xl font-light text-deep-taupe">Piece Not Found</h2>
+        {loadError && (
+          <p className="max-w-md text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-center">
+            Catalog could not be loaded from CSV source. {loadError}
+          </p>
+        )}
         <Link to="/shop" className="btn-primary">Back to Shop</Link>
       </div>
     );
   }
 
-  const images = [product.thumbnailImage, ...product.galleryImages];
-  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    `Hello, I'm interested in this jewelry item:\nProduct: ${product.name}\nProduct ID: ${product.id}\nPlease share availability and purchase details.`
-  )}`;
+  const images = [product.thumbnailImage || JEWELRY_IMAGE_FALLBACK, ...(product.galleryImages || [])].filter(Boolean);
+  const instagramUrl = product.instagramUrl || settings.instagramUrl;
+  const whatsappUrl = settings.whatsappNumber
+    ? `https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(
+        `Hello, I'm interested in this jewelry item:\nProduct: ${product.name}\nProduct ID: ${product.id}\nPlease share availability and purchase details.`
+      )}`
+    : '';
 
   const handleShare = () => {
     navigator.share?.({
@@ -91,7 +106,7 @@ export default function ProductDetail() {
         <ChevronRight size={10} />
         <Link to="/shop" className="hover:text-rose-gold">Shop</Link>
         <ChevronRight size={10} />
-        <Link to={`/shop?category=${product.category.toLowerCase()}`} className="hover:text-rose-gold">{product.category}</Link>
+        <Link to={`/shop?category=${(product.category || '').toLowerCase()}`} className="hover:text-rose-gold">{product.category || 'Jewelry'}</Link>
         <ChevronRight size={10} />
         <span className="text-rose-gold">{product.name}</span>
       </div>
@@ -107,10 +122,11 @@ export default function ProductDetail() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
-                src={images[activeImage]}
+                src={images[activeImage] || JEWELRY_IMAGE_FALLBACK}
                 alt={product.name}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                onError={(e) => { e.currentTarget.src = JEWELRY_IMAGE_FALLBACK; }}
               />
             </AnimatePresence>
             
@@ -145,7 +161,13 @@ export default function ProductDetail() {
                     activeImage === idx ? "ring-2 ring-rose-gold ring-offset-2" : "opacity-60 hover:opacity-100"
                   )}
                 >
-                  <img src={img} alt={`${product.name} ${idx}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img
+                    src={img}
+                    alt={`${product.name} ${idx}`}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => { e.currentTarget.src = JEWELRY_IMAGE_FALLBACK; }}
+                  />
                 </button>
               ))}
             </div>
@@ -158,7 +180,7 @@ export default function ProductDetail() {
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <span className="text-xs font-semibold tracking-widest uppercase text-rose-gold">
-                  {product.category} • {product.subcategory}
+                  {product.category || 'Jewelry'} • {product.subcategory || 'Classic'}
                 </span>
                 <h1 className="text-3xl md:text-4xl font-light text-deep-taupe tracking-tight">
                   {product.name}
@@ -191,15 +213,26 @@ export default function ProductDetail() {
           {/* Actions */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 btn-primary flex items-center justify-center gap-3 py-4"
-              >
-                <MessageCircle size={20} />
-                Buy on WhatsApp
-              </a>
+              {whatsappUrl ? (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 btn-primary flex items-center justify-center gap-3 py-4"
+                >
+                  <MessageCircle size={20} />
+                  Buy on WhatsApp
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="flex-1 btn-primary opacity-50 cursor-not-allowed flex items-center justify-center gap-3 py-4"
+                >
+                  <MessageCircle size={20} />
+                  WhatsApp Unavailable
+                </button>
+              )}
               <button
                 onClick={() => {
                   setIsWishlisted(!isWishlisted);
@@ -217,9 +250,9 @@ export default function ProductDetail() {
               </button>
             </div>
             
-            {product.instagramUrl && (
+            {instagramUrl && (
               <a
-                href={product.instagramUrl}
+                href={instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full btn-secondary flex items-center justify-center gap-3 py-4"
@@ -241,11 +274,11 @@ export default function ProductDetail() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase text-taupe/60">Occasion</span>
-                  <p className="text-sm text-taupe">{product.occasionTags.join(', ')}</p>
+                  <p className="text-sm text-taupe">{(product.occasionTags || []).join(', ') || '—'}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase text-taupe/60">Style</span>
-                  <p className="text-sm text-taupe">{product.styleTags.join(', ')}</p>
+                  <p className="text-sm text-taupe">{(product.styleTags || []).join(', ') || '—'}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase text-taupe/60">Availability</span>

@@ -3,11 +3,14 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { testConnection } from './services/firebaseService';
+import { StoreSettingsProvider } from './contexts/StoreSettingsContext';
 
 testConnection();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <StoreSettingsProvider>
+      <App />
+    </StoreSettingsProvider>
   </StrictMode>,
 );
