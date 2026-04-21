@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, Instagram } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Product } from '../types';
 import { formatPrice, cn } from '../lib/utils';
-import { WHATSAPP_NUMBER } from '../constants';
+import { useStoreSettings } from '../contexts/StoreSettingsContext';
+import { JEWELRY_IMAGE_FALLBACK } from '../constants';
 
 interface ProductCardProps {
   product: Product;
@@ -14,9 +15,27 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, isWishlisted, onToggleWishlist }: ProductCardProps) {
-  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    `Hello, I'm interested in this jewelry item:\nProduct: ${product.name}\nProduct ID: ${product.id}\nPlease share availability and purchase details.`
-  )}`;
+  const { settings } = useStoreSettings();
+  const instagramUrl = product.instagramUrl || settings.instagramUrl;
+  const siteBaseUrl = (import.meta.env.APP_URL || window.location.origin || '').replace(/\/$/, '');
+  const productUrl = product.slug ? `${siteBaseUrl}/product/${product.slug}` : '';
+  const primaryImageUrl = product.mainImage || product.thumbnailImage || '';
+  const whatsappMessageLines = [
+    "Hello, I'm interested in this jewelry item:",
+    '',
+    `Product: ${product.name}`,
+    ...(productUrl ? [`Product URL: ${productUrl}`] : []),
+    ...(primaryImageUrl ? [`Product Image: ${primaryImageUrl}`] : []),
+    '',
+    'Please share availability and purchase details.',
+  ];
+  const whatsappUrl = settings.whatsappNumber
+    ? `https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(
+        whatsappMessageLines.join('\n')
+      )}`
+    : '';
+
+  const imageSrc = useMemo(() => product.thumbnailImage || JEWELRY_IMAGE_FALLBACK, [product.thumbnailImage]);
 
   return (
     <motion.div
@@ -29,10 +48,11 @@ export default function ProductCard({ product, isWishlisted, onToggleWishlist }:
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-warm-gray mb-4">
         <Link to={`/product/${product.slug}`}>
           <img
-            src={product.thumbnailImage}
+            src={imageSrc}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             referrerPolicy="no-referrer"
+            onError={(e) => { e.currentTarget.src = JEWELRY_IMAGE_FALLBACK; }}
           />
         </Link>
 
@@ -64,20 +84,27 @@ export default function ProductCard({ product, isWishlisted, onToggleWishlist }:
         </button>
 
         {/* Quick Actions Overlay */}
-        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 bg-gradient-to-t from-black/20 to-transparent">
-          <div className="flex gap-2">
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 bg-white hover:bg-rose-gold hover:text-white text-taupe text-xs font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              <MessageCircle size={14} />
-              WhatsApp
-            </a>
-            {product.instagramUrl && (
+        <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 bg-gradient-to-t from-black/20 to-transparent">
+          <div className="flex flex-wrap sm:flex-nowrap gap-2">
+            {whatsappUrl ? (
               <a
-                href={product.instagramUrl}
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 min-w-[150px] bg-white hover:bg-rose-gold hover:text-white text-taupe text-xs font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <MessageCircle size={14} />
+                WhatsApp
+              </a>
+            ) : (
+              <span className="flex-1 min-w-[150px] bg-white/70 text-taupe/60 text-xs font-medium py-3 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed">
+                <MessageCircle size={14} />
+                WhatsApp Unavailable
+              </span>
+            )}
+            {instagramUrl && (
+              <a
+                href={instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-12 bg-white/90 hover:bg-rose-gold hover:text-white text-taupe rounded-xl flex items-center justify-center transition-colors"
@@ -100,7 +127,7 @@ export default function ProductCard({ product, isWishlisted, onToggleWishlist }:
           </span>
         </div>
         <p className="text-xs text-taupe line-clamp-1 italic font-light">
-          {product.category} • {product.subcategory}
+          {product.category || 'Jewelry'} • {product.subcategory || 'Classic'}
         </p>
       </div>
     </motion.div>

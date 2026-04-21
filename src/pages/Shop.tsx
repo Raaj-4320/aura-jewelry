@@ -3,15 +3,16 @@ import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Filter, Search, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { Product } from '../types';
-import { getProducts } from '../services/firebaseService';
+import { getDisplayProducts } from '../services/catalogService';
 import ProductCard from '../components/ProductCard';
 import { CATEGORIES, SUB_CATEGORIES } from '../constants';
-import { cn } from '../lib/utils';
+import { cn, normalizeCategory, normalizeSubcategory } from '../lib/utils';
 
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -24,10 +25,12 @@ export default function Shop() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const data = await getProducts();
+        const data = await getDisplayProducts();
         setProducts(data || []);
       } catch (error) {
         console.error(error);
+        setProducts([]);
+        setLoadError(error instanceof Error ? error.message : 'Unable to load catalog');
       } finally {
         setLoading(false);
       }
@@ -40,21 +43,21 @@ export default function Shop() {
 
     // Category filter
     if (activeCategory !== 'all') {
-      result = result.filter(p => p.category.toLowerCase() === activeCategory.toLowerCase());
+      result = result.filter(p => normalizeCategory(p.category) === normalizeCategory(activeCategory));
     }
 
     // Subcategory filter
     if (activeSubCategory !== 'all') {
-      result = result.filter(p => p.subcategory.toLowerCase() === activeSubCategory.toLowerCase());
+      result = result.filter(p => normalizeSubcategory(p.subcategory) === normalizeSubcategory(activeSubCategory));
     }
 
     // Search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(p => 
-        p.name.toLowerCase().includes(query) || 
-        p.shortDescription.toLowerCase().includes(query) ||
-        p.category.toLowerCase().includes(query)
+        (p.name || '').toLowerCase().includes(query) || 
+        (p.shortDescription || '').toLowerCase().includes(query) ||
+        (p.category || '').toLowerCase().includes(query)
       );
     }
 
@@ -235,6 +238,11 @@ export default function Shop() {
         </AnimatePresence>
 
         {/* Product Grid */}
+        {!loading && loadError && (
+          <div className="mb-8 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-5 py-4 text-sm">
+            Catalog could not be loaded from CSV source. {loadError}
+          </div>
+        )}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (

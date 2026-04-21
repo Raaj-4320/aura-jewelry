@@ -7,14 +7,13 @@ import {
   X, 
   Save, 
   Plus, 
-  Image as ImageIcon,
   Loader2,
   Instagram
 } from 'lucide-react';
 import { db } from '../../firebase';
-import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, getDocs, query, where, limit } from 'firebase/firestore';
 import { CATEGORIES, SUB_CATEGORIES } from '../../constants';
-import { generateSlug, cn } from '../../lib/utils';
+import { generateSlug, normalizeCategory, normalizeSubcategory } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
 export default function AddProduct() {
@@ -26,8 +25,8 @@ export default function AddProduct() {
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    category: CATEGORIES[0].name,
-    subcategory: SUB_CATEGORIES[0].name,
+    category: CATEGORIES[0].slug,
+    subcategory: SUB_CATEGORIES[0].id,
     price: 0,
     priceOnRequest: false,
     shortDescription: '',
@@ -49,13 +48,25 @@ export default function AddProduct() {
     occasionTags: [] as string[],
   });
 
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  const isCloudinaryConfigured = !!cloudName && !!uploadPreset;
+
   useEffect(() => {
     if (isEdit) {
       const fetchProduct = async () => {
         const docRef = doc(db, 'products', id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setFormData(docSnap.data() as any);
+          const data = docSnap.data() as any;
+          setFormData({
+            ...data,
+            category: normalizeCategory(data.category || CATEGORIES[0].slug),
+            subcategory: normalizeSubcategory(data.subcategory || SUB_CATEGORIES[0].id),
+            galleryImages: data.galleryImages || [],
+            styleTags: data.styleTags || [],
+            occasionTags: data.occasionTags || [],
+          });
         }
       };
       fetchProduct();
@@ -74,23 +85,8 @@ export default function AddProduct() {
 
     setUploading(true);
     try {
-      // Cloudinary Upload Logic
-      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-      const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-      if (!cloudName || !uploadPreset) {
-        // Fallback for demo if env not set
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          if (isThumbnail) {
-            setFormData(prev => ({ ...prev, thumbnailImage: base64 }));
-          } else {
-            setFormData(prev => ({ ...prev, galleryImages: [...prev.galleryImages, base64] }));
-          }
-          setUploading(false);
-        };
-        reader.readAsDataURL(file);
+      if (!isCloudinaryConfigured) {
+        toast.error('Image upload is unavailable: configure Cloudinary in environment settings.');
         return;
       }
 
@@ -103,6 +99,9 @@ export default function AddProduct() {
         body: uploadData,
       });
       const data = await res.json();
+      if (!res.ok || !data?.secure_url) {
+        throw new Error(data?.error?.message || 'Upload failed');
+      }
 
       if (isThumbnail) {
         setFormData(prev => ({ ...prev, thumbnailImage: data.secure_url }));
@@ -117,19 +116,52 @@ export default function AddProduct() {
     }
   };
 
+
+  const getUniqueSlug = async (name: string) => {
+    const baseSlug = generateSlug(name);
+    if (!baseSlug) return '';
+
+    let candidate = baseSlug;
+    let index = 1;
+
+    while (true) {
+      const slugQuery = query(collection(db, 'products'), where('slug', '==', candidate), limit(1));
+      const snap = await getDocs(slugQuery);
+      if (snap.empty || (isEdit && snap.docs[0].id === id)) {
+        return candidate;
+      }
+      index += 1;
+      candidate = `${baseSlug}-${index}`;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.thumbnailImage) {
       toast.error('Thumbnail image is required');
       return;
     }
+    if (!formData.name.trim()) {
+      toast.error('Product name is required');
+      return;
+    }
 
     setLoading(true);
     try {
-      const slug = generateSlug(formData.name);
+      const slug = await getUniqueSlug(formData.name);
+      if (!slug) {
+        toast.error('Please enter a valid product name');
+        setLoading(false);
+        return;
+      }
+
       const productData = {
         ...formData,
+        name: formData.name.trim(),
         slug,
+        category: normalizeCategory(formData.category),
+        subcategory: normalizeSubcategory(formData.subcategory),
+        currency: 'INR',
         updatedAt: serverTimestamp(),
       };
 
@@ -166,6 +198,12 @@ export default function AddProduct() {
           </div>
         </div>
 
+        {!isCloudinaryConfigured && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-5 py-4 rounded-2xl text-sm">
+            Cloudinary is not configured. Image upload is disabled until <code>VITE_CLOUDINARY_CLOUD_NAME</code> and <code>VITE_CLOUDINARY_UPLOAD_PRESET</code> are set.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column: Details */}
           <div className="lg:col-span-2 space-y-8">
@@ -196,7 +234,7 @@ export default function AddProduct() {
                       onChange={handleInputChange}
                       className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm focus:bg-white focus:border-rose-gold/30 transition-all outline-none appearance-none"
                     >
-                      {CATEGORIES.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                      {CATEGORIES.map(cat => <option key={cat.id} value={cat.slug}>{cat.name}</option>)}
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -207,7 +245,7 @@ export default function AddProduct() {
                       onChange={handleInputChange}
                       className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm focus:bg-white focus:border-rose-gold/30 transition-all outline-none appearance-none"
                     >
-                      {SUB_CATEGORIES.map(sub => <option key={sub.id} value={sub.name}>{sub.name}</option>)}
+                      {SUB_CATEGORIES.map(sub => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
                     </select>
                   </div>
                 </div>
@@ -312,7 +350,7 @@ export default function AddProduct() {
                 <label className="aspect-square rounded-2xl border-2 border-dashed border-rose-gold/20 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-rose-gold-light/20 transition-all">
                   <Plus size={24} className="text-rose-gold" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-taupe">Add Image</span>
-                  <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, false)} accept="image/*" />
+                  <input type="file" disabled={!isCloudinaryConfigured} className="hidden" onChange={(e) => handleImageUpload(e, false)} accept="image/*" />
                 </label>
               </div>
             </div>
@@ -344,7 +382,7 @@ export default function AddProduct() {
                       <p className="text-xs font-bold uppercase tracking-widest text-deep-taupe">Upload Thumbnail</p>
                       <p className="text-[10px] text-taupe mt-1">JPG, PNG up to 5MB</p>
                     </div>
-                    <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, true)} accept="image/*" />
+                    <input type="file" disabled={!isCloudinaryConfigured} className="hidden" onChange={(e) => handleImageUpload(e, true)} accept="image/*" />
                   </label>
                 )}
                 {uploading && (

@@ -7,6 +7,16 @@ export interface Product {
   id: string;
   name: string;
   slug: string;
+  descriptionHtml?: string;
+  vendor?: string;
+  tags?: string[];
+  mainImage?: string;
+  images?: string[];
+  imageAlt?: string;
+  jewelryType?: string;
+  color?: string;
+  targetGender?: string;
+  status?: string;
   category: string;
   subcategory: string;
   styleTags: string[];

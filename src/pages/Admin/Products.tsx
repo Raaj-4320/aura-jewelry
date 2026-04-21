@@ -93,9 +93,9 @@ export default function Products() {
               className="w-full pl-12 pr-4 py-3 bg-white border border-rose-gold/10 rounded-2xl text-sm focus:outline-none focus:border-rose-gold/30 transition-all"
             />
           </div>
-          <button className="px-6 py-3 bg-white border border-rose-gold/10 rounded-2xl text-sm font-medium text-taupe flex items-center gap-2 hover:border-rose-gold/30 transition-all">
+          <button disabled title="Filtering options are not available yet" className="px-6 py-3 bg-white border border-rose-gold/10 rounded-2xl text-sm font-medium text-taupe/60 flex items-center gap-2 cursor-not-allowed">
             <Filter size={18} />
-            Filters
+            Filters (Soon)
           </button>
         </div>
 

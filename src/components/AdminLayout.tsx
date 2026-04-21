@@ -10,8 +10,7 @@ import {
   Menu, 
   X,
   ChevronRight,
-  Bell,
-  Search
+  Bell
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -26,10 +25,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        // In a real app, check for admin role
-        // navigate('/login');
-      }
       setUser(user);
     });
     return () => unsubscribe();
@@ -121,18 +116,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="relative hidden sm:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-taupe/40" size={16} />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                className="pl-10 pr-4 py-2 bg-warm-gray/50 border-none rounded-full text-xs focus:ring-1 ring-rose-gold/30 outline-none w-64"
-              />
+            <div className="hidden sm:block text-[10px] uppercase tracking-widest text-taupe/60 bg-warm-gray/50 px-4 py-2 rounded-full">
+              Search coming soon
             </div>
-            <button className="relative text-taupe p-2 hover:bg-warm-gray rounded-lg">
+            <div className="relative text-taupe p-2" title="Notifications unavailable">
               <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-gold rounded-full border-2 border-white"></span>
-            </button>
+            </div>
             <div className="flex items-center gap-3 pl-6 border-l border-warm-gray">
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-semibold text-deep-taupe">{user?.email?.split('@')[0]}</p>
