@@ -6,7 +6,7 @@ import { Product } from '../types';
 import { getProducts } from '../services/firebaseService';
 import ProductCard from '../components/ProductCard';
 import { CATEGORIES, SUB_CATEGORIES } from '../constants';
-import { cn } from '../lib/utils';
+import { cn, normalizeCategory, normalizeSubcategory } from '../lib/utils';
 
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,21 +40,21 @@ export default function Shop() {
 
     // Category filter
     if (activeCategory !== 'all') {
-      result = result.filter(p => p.category.toLowerCase() === activeCategory.toLowerCase());
+      result = result.filter(p => normalizeCategory(p.category) === normalizeCategory(activeCategory));
     }
 
     // Subcategory filter
     if (activeSubCategory !== 'all') {
-      result = result.filter(p => p.subcategory.toLowerCase() === activeSubCategory.toLowerCase());
+      result = result.filter(p => normalizeSubcategory(p.subcategory) === normalizeSubcategory(activeSubCategory));
     }
 
     // Search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(p => 
-        p.name.toLowerCase().includes(query) || 
-        p.shortDescription.toLowerCase().includes(query) ||
-        p.category.toLowerCase().includes(query)
+        (p.name || '').toLowerCase().includes(query) || 
+        (p.shortDescription || '').toLowerCase().includes(query) ||
+        (p.category || '').toLowerCase().includes(query)
       );
     }
 

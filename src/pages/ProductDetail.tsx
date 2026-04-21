@@ -16,7 +16,7 @@ import {
 import { Product } from '../types';
 import { getProductBySlug, getProducts } from '../services/firebaseService';
 import { formatPrice, cn } from '../lib/utils';
-import { WHATSAPP_NUMBER } from '../constants';
+import { useStoreSettings } from '../contexts/StoreSettingsContext';
 import ProductCard from '../components/ProductCard';
 import toast from 'react-hot-toast';
 
@@ -27,6 +27,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const { settings } = useStoreSettings();
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -67,10 +68,12 @@ export default function ProductDetail() {
     );
   }
 
-  const images = [product.thumbnailImage, ...product.galleryImages];
-  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    `Hello, I'm interested in this jewelry item:\nProduct: ${product.name}\nProduct ID: ${product.id}\nPlease share availability and purchase details.`
-  )}`;
+  const images = [product.thumbnailImage || 'https://picsum.photos/seed/jewelry-fallback/800/1000', ...(product.galleryImages || [])].filter(Boolean);
+  const whatsappUrl = settings.whatsappNumber
+    ? `https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(
+        `Hello, I'm interested in this jewelry item:\nProduct: ${product.name}\nProduct ID: ${product.id}\nPlease share availability and purchase details.`
+      )}`
+    : '';
 
   const handleShare = () => {
     navigator.share?.({
@@ -91,7 +94,7 @@ export default function ProductDetail() {
         <ChevronRight size={10} />
         <Link to="/shop" className="hover:text-rose-gold">Shop</Link>
         <ChevronRight size={10} />
-        <Link to={`/shop?category=${product.category.toLowerCase()}`} className="hover:text-rose-gold">{product.category}</Link>
+        <Link to={`/shop?category=${(product.category || '').toLowerCase()}`} className="hover:text-rose-gold">{product.category || 'Jewelry'}</Link>
         <ChevronRight size={10} />
         <span className="text-rose-gold">{product.name}</span>
       </div>
@@ -107,10 +110,11 @@ export default function ProductDetail() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
-                src={images[activeImage]}
+                src={images[activeImage] || 'https://picsum.photos/seed/jewelry-fallback/800/1000'}
                 alt={product.name}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                onError={(e) => { e.currentTarget.src = 'https://picsum.photos/seed/jewelry-fallback/800/1000'; }}
               />
             </AnimatePresence>
             
@@ -158,7 +162,7 @@ export default function ProductDetail() {
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <span className="text-xs font-semibold tracking-widest uppercase text-rose-gold">
-                  {product.category} • {product.subcategory}
+                  {product.category || 'Jewelry'} • {product.subcategory || 'Classic'}
                 </span>
                 <h1 className="text-3xl md:text-4xl font-light text-deep-taupe tracking-tight">
                   {product.name}
@@ -191,15 +195,26 @@ export default function ProductDetail() {
           {/* Actions */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 btn-primary flex items-center justify-center gap-3 py-4"
-              >
-                <MessageCircle size={20} />
-                Buy on WhatsApp
-              </a>
+              {whatsappUrl ? (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 btn-primary flex items-center justify-center gap-3 py-4"
+                >
+                  <MessageCircle size={20} />
+                  Buy on WhatsApp
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="flex-1 btn-primary opacity-50 cursor-not-allowed flex items-center justify-center gap-3 py-4"
+                >
+                  <MessageCircle size={20} />
+                  WhatsApp Unavailable
+                </button>
+              )}
               <button
                 onClick={() => {
                   setIsWishlisted(!isWishlisted);
@@ -241,11 +256,11 @@ export default function ProductDetail() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase text-taupe/60">Occasion</span>
-                  <p className="text-sm text-taupe">{product.occasionTags.join(', ')}</p>
+                  <p className="text-sm text-taupe">{(product.occasionTags || []).join(', ') || '—'}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase text-taupe/60">Style</span>
-                  <p className="text-sm text-taupe">{product.styleTags.join(', ')}</p>
+                  <p className="text-sm text-taupe">{(product.styleTags || []).join(', ') || '—'}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase text-taupe/60">Availability</span>
