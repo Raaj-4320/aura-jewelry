@@ -33,5 +33,8 @@ export const SUB_CATEGORIES = [
   { id: 'festive', name: 'Festive' },
 ];
 
-export const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '910000000000';
-export const INSTAGRAM_URL = import.meta.env.VITE_INSTAGRAM_URL || 'https://instagram.com';
+export const DEFAULT_BRAND_NAME = 'Aura Jewelry';
+export const DEFAULT_BRAND_TAGLINE = 'Premium luxury jewelry boutique for women.';
+
+export const WHATSAPP_NUMBER = (import.meta.env.VITE_WHATSAPP_NUMBER || '').trim();
+export const INSTAGRAM_URL = (import.meta.env.VITE_INSTAGRAM_URL || '').trim();

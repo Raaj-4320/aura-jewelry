@@ -1,35 +1,41 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Instagram, MessageCircle, Mail, MapPin, Phone } from 'lucide-react';
+import { useStoreSettings } from '../contexts/StoreSettingsContext';
 
 export default function Footer() {
+  const { settings } = useStoreSettings();
+  const whatsappUrl = settings.whatsappNumber ? `https://wa.me/${settings.whatsappNumber}` : '';
+
   return (
     <footer className="bg-white border-t border-warm-gray pt-20 pb-10 px-6">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-        {/* Brand */}
         <div className="space-y-6">
           <Link to="/" className="flex flex-col items-start group">
             <span className="text-2xl font-light tracking-[0.2em] text-deep-taupe uppercase">
-              Aura
+              {settings.brandName.split(' ')[0] || 'Aura'}
             </span>
             <span className="text-[0.6rem] tracking-[0.4em] text-taupe uppercase -mt-1">
-              Jewelry
+              {settings.brandName.split(' ').slice(1).join(' ') || 'Jewelry'}
             </span>
           </Link>
           <p className="text-sm text-taupe leading-relaxed max-w-xs">
-            Crafting timeless elegance and modern luxury for the sophisticated woman. Every piece tells a story of beauty and grace.
+            {settings.brandDescription}
           </p>
           <div className="flex space-x-4">
-            <a href="#" className="w-10 h-10 rounded-full bg-warm-gray flex items-center justify-center text-taupe hover:bg-rose-gold hover:text-white transition-all duration-300">
-              <Instagram size={18} />
-            </a>
-            <a href="#" className="w-10 h-10 rounded-full bg-warm-gray flex items-center justify-center text-taupe hover:bg-rose-gold hover:text-white transition-all duration-300">
-              <MessageCircle size={18} />
-            </a>
+            {settings.instagramUrl && (
+              <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-warm-gray flex items-center justify-center text-taupe hover:bg-rose-gold hover:text-white transition-all duration-300" aria-label="Instagram">
+                <Instagram size={18} />
+              </a>
+            )}
+            {whatsappUrl && (
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-warm-gray flex items-center justify-center text-taupe hover:bg-rose-gold hover:text-white transition-all duration-300" aria-label="WhatsApp">
+                <MessageCircle size={18} />
+              </a>
+            )}
           </div>
         </div>
 
-        {/* Shop */}
         <div>
           <h4 className="text-xs font-semibold tracking-widest uppercase text-deep-taupe mb-6">Shop</h4>
           <ul className="space-y-4">
@@ -41,7 +47,6 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Information */}
         <div>
           <h4 className="text-xs font-semibold tracking-widest uppercase text-deep-taupe mb-6">Information</h4>
           <ul className="space-y-4">
@@ -53,7 +58,6 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Contact */}
         <div>
           <h4 className="text-xs font-semibold tracking-widest uppercase text-deep-taupe mb-6">Contact</h4>
           <ul className="space-y-4">
@@ -75,7 +79,7 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto pt-10 border-t border-warm-gray flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
         <p className="text-xs text-taupe">
-          © {new Date().getFullYear()} Aura Jewelry. All rights reserved.
+          © {new Date().getFullYear()} {settings.brandName}. All rights reserved.
         </p>
         <div className="flex space-x-6">
           <Link to="/privacy" className="text-xs text-taupe hover:text-rose-gold">Privacy Policy</Link>
