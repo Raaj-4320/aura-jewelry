@@ -36,7 +36,7 @@ export const SUB_CATEGORIES = [
 export const DEFAULT_BRAND_NAME = 'Sviwa Creation';
 export const DEFAULT_BRAND_TAGLINE = 'Sviwa Creation — timeless jewelry crafted for modern elegance.';
 
-export const WHATSAPP_NUMBER = (import.meta.env.VITE_WHATSAPP_NUMBER || '9274529394').trim();
+export const WHATSAPP_NUMBER = (import.meta.env.VITE_WHATSAPP_NUMBER || '+919274529394').trim();
 export const INSTAGRAM_URL = (import.meta.env.VITE_INSTAGRAM_URL || '').trim();
 
 export const JEWELRY_IMAGE_FALLBACK =
