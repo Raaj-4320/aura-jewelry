@@ -40,7 +40,7 @@ export default function App() {
           <Route path="/login" element={<Layout><Login /></Layout>} />
           <Route path="/account" element={<Layout><InfoPage title="Account" description="Sign in to access your account details and saved preferences." /></Layout>} />
           <Route path="/about" element={<Layout><InfoPage title="About Us" description="Sviwa Creation celebrates timeless luxury with curated jewelry crafted for modern elegance." /></Layout>} />
-          <Route path="/contact" element={<Layout><InfoPage title="Contact" description="Reach Sviwa Creation on WhatsApp (+91 9510907017) or Instagram for product inquiries and styling assistance." /></Layout>} />
+          <Route path="/contact" element={<Layout><InfoPage title="Contact" description="Reach Sviwa Creation on WhatsApp (+91 9274529394) or Instagram for product inquiries and styling assistance." /></Layout>} />
           <Route path="/shipping" element={<Layout><InfoPage title="Shipping Policy" description="We provide careful packaging and reliable shipping updates for every order inquiry handled via WhatsApp." /></Layout>} />
           <Route path="/care" element={<Layout><InfoPage title="Jewelry Care" description="Store jewelry in dry spaces, avoid harsh chemicals, and clean gently with a soft cloth to preserve brilliance." /></Layout>} />
           <Route path="/faq" element={<Layout><InfoPage title="FAQs" description="Find answers about sizing, materials, customization, and delivery timelines. Contact us for anything else." /></Layout>} />
