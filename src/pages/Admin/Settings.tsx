@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
-import { 
-  Save, 
-  Loader2, 
-  Settings as SettingsIcon,
+import {
+  Save,
+  Loader2,
   Globe,
   MessageCircle,
   Instagram,
-  Cloud
+  Cloud,
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -21,8 +20,6 @@ export default function Settings() {
     brandDescription: 'Premium luxury jewelry boutique for women.',
     whatsappNumber: '',
     instagramUrl: '',
-    cloudinaryCloudName: '',
-    cloudinaryUploadPreset: ''
   });
 
   useEffect(() => {
@@ -160,29 +157,15 @@ export default function Settings() {
               <Cloud className="text-rose-gold" size={20} />
               <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-deep-taupe">Media Configuration (Cloudinary)</h2>
             </div>
-            <p className="text-[10px] text-taupe-light italic">Changing these values will affect where new images are uploaded.</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-2">Cloudinary Cloud Name</label>
-                <input
-                  type="text"
-                  name="cloudinaryCloudName"
-                  value={settings.cloudinaryCloudName}
-                  onChange={handleChange}
-                  className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm focus:bg-white focus:border-rose-gold/30 transition-all outline-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-2">Upload Preset</label>
-                <input
-                  type="text"
-                  name="cloudinaryUploadPreset"
-                  value={settings.cloudinaryUploadPreset}
-                  onChange={handleChange}
-                  className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm focus:bg-white focus:border-rose-gold/30 transition-all outline-none"
-                />
-              </div>
+            <p className="text-sm text-taupe leading-relaxed">
+              Cloudinary upload runtime configuration is controlled via environment variables:
+              <code className="mx-1">VITE_CLOUDINARY_CLOUD_NAME</code>
+              and
+              <code className="mx-1">VITE_CLOUDINARY_UPLOAD_PRESET</code>.
+              This prevents misleading client-side configuration and avoids exposing secrets in Firestore.
+            </p>
+            <div className="rounded-2xl bg-warm-gray/40 p-4 text-xs text-taupe uppercase tracking-wider">
+              To change upload target, update deployment environment variables and redeploy the app.
             </div>
           </section>
 

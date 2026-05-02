@@ -1,21 +1,20 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   serverTimestamp,
-  onSnapshot,
-  getDocFromServer
+  getDocFromServer,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Product, Category, Testimonial, UserProfile } from '../types';
+import { Product } from '../types';
 
 // Error handling helper
 enum OperationType {
@@ -66,6 +65,20 @@ export const getProducts = async (filters?: { category?: string; featured?: bool
   }
 };
 
+export const getAdminProducts = async (filters?: { category?: string; featured?: boolean; limit?: number }) => {
+  const path = 'products';
+  try {
+    let q = query(collection(db, path), orderBy('sortOrder', 'asc'));
+    if (filters?.category) q = query(q, where('category', '==', filters.category));
+    if (filters?.featured) q = query(q, where('featured', '==', true));
+    if (filters?.limit) q = query(q, limit(filters.limit));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Product));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+  }
+};
+
 export const getProductBySlug = async (slug: string) => {
   const path = 'products';
   try {
@@ -76,6 +89,54 @@ export const getProductBySlug = async (slug: string) => {
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
   }
+};
+
+export const getProductById = async (id: string) => {
+  const path = `products/${id}`;
+  try {
+    const productSnap = await getDoc(doc(db, 'products', id));
+    if (!productSnap.exists()) return null;
+    return { id: productSnap.id, ...productSnap.data() } as Product;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+  }
+};
+
+type ProductPayload = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
+
+export const createProduct = async (product: ProductPayload) => {
+  const path = 'products';
+  try {
+    return await addDoc(collection(db, path), {
+      ...product,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+};
+
+export const updateProduct = async (id: string, data: Partial<ProductPayload>) => {
+  const path = `products/${id}`;
+  try {
+    await updateDoc(doc(db, 'products', id), { ...data, updatedAt: serverTimestamp() });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+};
+
+export const deleteProduct = async (id: string) => {
+  const path = `products/${id}`;
+  try {
+    await deleteDoc(doc(db, 'products', id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+};
+
+export const toggleProductActive = async (id: string, active: boolean) => {
+  return updateProduct(id, { active });
 };
 
 // Wishlist

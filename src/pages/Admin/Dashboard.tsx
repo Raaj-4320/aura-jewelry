@@ -11,7 +11,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { getProducts } from '../../services/firebaseService';
+import { getAdminProducts } from '../../services/firebaseService';
 import { Product } from '../../types';
 import { formatPrice } from '../../lib/utils';
 
@@ -20,14 +20,14 @@ export default function Dashboard() {
     totalProducts: 0,
     activeProducts: 0,
     featuredProducts: 0,
-    whatsappClicks: 124, // Mock
-    wishlistAdds: 89, // Mock
+    whatsappClicks: null as number | null,
+    wishlistAdds: null as number | null,
   });
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
-      const products = await getProducts();
+      const products = await getAdminProducts();
       if (products) {
         setStats(prev => ({
           ...prev,
@@ -42,10 +42,10 @@ export default function Dashboard() {
   }, []);
 
   const statCards = [
-    { name: 'Total Products', value: stats.totalProducts, icon: Gem, color: 'rose-gold', trend: '+12%', up: true },
-    { name: 'Active Listing', value: stats.activeProducts, icon: TrendingUp, color: 'rose-gold', trend: '+5%', up: true },
-    { name: 'WhatsApp Inquiries', value: stats.whatsappClicks, icon: MessageCircle, color: 'rose-gold', trend: '+24%', up: true },
-    { name: 'Wishlist Adds', value: stats.wishlistAdds, icon: Users, color: 'rose-gold', trend: '-2%', up: false },
+    { name: 'Total Products', value: stats.totalProducts, icon: Gem, color: 'rose-gold', trend: 'Live', up: true },
+    { name: 'Active Listing', value: stats.activeProducts, icon: TrendingUp, color: 'rose-gold', trend: 'Live', up: true },
+    { name: 'WhatsApp Inquiries', value: stats.whatsappClicks, icon: MessageCircle, color: 'rose-gold', trend: 'Not configured', up: false },
+    { name: 'Wishlist Adds', value: stats.wishlistAdds, icon: Users, color: 'rose-gold', trend: 'Not configured', up: false },
   ];
 
   return (
@@ -87,7 +87,7 @@ export default function Dashboard() {
               </div>
               <div className="space-y-1">
                 <p className="text-xs font-medium text-taupe uppercase tracking-widest">{stat.name}</p>
-                <p className="text-3xl font-light text-deep-taupe">{stat.value}</p>
+                <p className="text-3xl font-light text-deep-taupe">{stat.value ?? '—'}</p>
               </div>
             </motion.div>
           ))}
@@ -132,19 +132,15 @@ export default function Dashboard() {
               <h3 className="text-sm font-semibold text-deep-taupe uppercase tracking-widest">Recent Activity</h3>
             </div>
             <div className="p-6 space-y-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-blush flex items-center justify-center text-rose-gold shrink-0">
-                    <Clock size={14} />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-deep-taupe leading-relaxed">
-                      <span className="font-bold">Admin</span> updated price for <span className="font-bold">Rose Gold Ring</span>
-                    </p>
-                    <p className="text-[10px] text-taupe uppercase tracking-widest">2 hours ago</p>
-                  </div>
+              <div className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-blush flex items-center justify-center text-rose-gold shrink-0">
+                  <Clock size={14} />
                 </div>
-              ))}
+                <div className="space-y-1">
+                  <p className="text-xs text-deep-taupe leading-relaxed">No telemetry feed configured yet.</p>
+                  <p className="text-[10px] text-taupe uppercase tracking-widest">Connect analytics events collection to show activity.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
