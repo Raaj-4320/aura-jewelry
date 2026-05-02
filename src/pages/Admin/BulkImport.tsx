@@ -15,9 +15,10 @@ import {
 import * as Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { db } from '../../firebase';
-import { addDoc, collection, getDocs, limit, query, serverTimestamp, where } from 'firebase/firestore';
+import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { generateSlug, normalizeCategory, normalizeSubcategory } from '../../lib/utils';
 import toast from 'react-hot-toast';
+import { createProduct } from '../../services/firebaseService';
 
 interface ImportRow {
   Name: string;
@@ -163,7 +164,7 @@ export default function BulkImport() {
 
     let successCount = 0;
     let failCount = invalidRows.length;
-    const productsRef = collection(db, 'products');
+    const runtimeFailures: string[] = [];
 
     for (let i = 0; i < validRows.length; i++) {
       const prepared = validRows[i];
@@ -196,21 +197,25 @@ export default function BulkImport() {
           styleTags: [],
           occasionTags: [],
           currency: 'INR',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
         };
 
-        await addDoc(productsRef, productData);
+        await createProduct(productData as any);
         successCount++;
       } catch (error) {
         console.error('Import failed', error);
+        runtimeFailures.push(`Row ${i + 1} (${prepared.productName}): ${(error as Error)?.message || 'Unknown error'}`);
         failCount++;
       } finally {
         setProgress(Math.round(((i + 1) / validRows.length) * 100));
       }
     }
 
-    toast.success(`Imported ${successCount} products. ${failCount} rows skipped/failed.`);
+    if (runtimeFailures.length) {
+      toast.error(`Imported ${successCount}. ${failCount} failed. Check console for row errors.`);
+      console.error('Bulk import row failures:', runtimeFailures);
+    } else {
+      toast.success(`Imported ${successCount} products. ${failCount} rows skipped/failed.`);
+    }
     setImportStatus('complete');
     setLoading(false);
   };

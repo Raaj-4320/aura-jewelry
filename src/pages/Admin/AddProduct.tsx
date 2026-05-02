@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
-import { 
+import {
   ArrowLeft, 
   Upload, 
   X, 
@@ -10,11 +10,12 @@ import {
   Loader2,
   Instagram
 } from 'lucide-react';
+import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, getDocs, query, where, limit } from 'firebase/firestore';
 import { CATEGORIES, SUB_CATEGORIES } from '../../constants';
 import { generateSlug, normalizeCategory, normalizeSubcategory } from '../../lib/utils';
 import toast from 'react-hot-toast';
+import { createProduct, getProductById, updateProduct } from '../../services/firebaseService';
 
 export default function AddProduct() {
   const { id } = useParams<{ id: string }>();
@@ -55,10 +56,9 @@ export default function AddProduct() {
   useEffect(() => {
     if (isEdit) {
       const fetchProduct = async () => {
-        const docRef = doc(db, 'products', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data() as any;
+        const product = await getProductById(id!);
+        if (product) {
+          const data = product as any;
           setFormData({
             ...data,
             category: normalizeCategory(data.category || CATEGORIES[0].slug),
@@ -162,17 +162,13 @@ export default function AddProduct() {
         category: normalizeCategory(formData.category),
         subcategory: normalizeSubcategory(formData.subcategory),
         currency: 'INR',
-        updatedAt: serverTimestamp(),
       };
 
       if (isEdit) {
-        await updateDoc(doc(db, 'products', id), productData);
+        await updateProduct(id!, productData);
         toast.success('Product updated');
       } else {
-        await addDoc(collection(db, 'products'), {
-          ...productData,
-          createdAt: serverTimestamp(),
-        });
+        await createProduct(productData);
         toast.success('Product added');
       }
       navigate('/admin/products');

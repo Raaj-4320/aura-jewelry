@@ -52,7 +52,7 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
   }
 
   if (!authorized) {
-    return <Navigate to="/login" replace state={{ from: location.pathname, unauthorized: true }} />;
+    return <Navigate to="/login" replace state={{ from: { pathname: location.pathname, search: location.search }, unauthorized: true }} />;
   }
 
   return <>{children}</>;

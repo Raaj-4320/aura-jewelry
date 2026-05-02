@@ -13,11 +13,9 @@ import {
   CheckCircle2,
   XCircle
 } from 'lucide-react';
-import { getProducts } from '../../services/firebaseService';
+import { getAdminProducts, deleteProduct, toggleProductActive } from '../../services/firebaseService';
 import { Product } from '../../types';
 import { formatPrice, cn } from '../../lib/utils';
-import { db } from '../../firebase';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 export default function Products() {
@@ -32,7 +30,7 @@ export default function Products() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const data = await getProducts();
+      const data = await getAdminProducts();
       setProducts(data || []);
     } catch (error) {
       console.error(error);
@@ -43,7 +41,7 @@ export default function Products() {
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
     try {
-      await updateDoc(doc(db, 'products', id), { active: !currentStatus });
+      await toggleProductActive(id, !currentStatus);
       setProducts(prev => prev.map(p => p.id === id ? { ...p, active: !currentStatus } : p));
       toast.success(`Product ${!currentStatus ? 'activated' : 'deactivated'}`);
     } catch (error) {
@@ -54,7 +52,7 @@ export default function Products() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
     try {
-      await deleteDoc(doc(db, 'products', id));
+      await deleteProduct(id);
       setProducts(prev => prev.filter(p => p.id !== id));
       toast.success('Product deleted');
     } catch (error) {

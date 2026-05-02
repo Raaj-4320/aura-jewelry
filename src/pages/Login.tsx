@@ -13,6 +13,15 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const getSafeRedirectPath = () => {
+    const fallback = '/';
+    const from = (location.state as any)?.from;
+    const pathname = typeof from?.pathname === 'string' ? from.pathname : '';
+    const search = typeof from?.search === 'string' ? from.search : '';
+    if (!pathname.startsWith('/')) return fallback;
+    if (pathname.startsWith('//') || pathname.includes('://')) return fallback;
+    return `${pathname}${search}`;
+  };
 
   useEffect(() => {
     if (location.state?.unauthorized) {
@@ -31,7 +40,7 @@ export default function Login() {
         await createUserWithEmailAndPassword(auth, email, password);
         toast.success('Account created successfully');
       }
-      navigate('/');
+      navigate(getSafeRedirectPath());
     } catch (error: any) {
       toast.error(error.message || 'Authentication failed');
     } finally {
