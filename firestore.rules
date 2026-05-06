@@ -42,10 +42,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && 
-        (request.auth.token.admin == true ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         request.auth.token.email == "raj.golakiya0@gmail.com");
+      // Admin authorization is enforced by Firebase custom claims only.
+      // The `admin` claim must be assigned from a trusted server/admin environment.
+      // Never rely on client-writable documents or client code for privilege grants.
+      return isAuthenticated() && request.auth.token.admin == true;
     }
 
     function isOwner(userId) {
@@ -61,6 +61,13 @@ service cloud.firestore {
              data.active is bool;
     }
 
+    function isPublicProduct(data) {
+      return (
+        (data.active == true || (data.status is string && lower(data.status) == 'active')) &&
+        data.published != false
+      );
+    }
+
     function isValidUser(data) {
       return data.uid is string && data.uid == request.auth.uid &&
              data.email is string &&
@@ -72,8 +79,8 @@ service cloud.firestore {
     // ===============================================================
 
     match /products/{productId} {
-      // Anyone can read active products
-      allow read: if resource.data.active == true || isAdmin();
+      // Anyone can read public/active products. Admins can read all products.
+      allow read: if isPublicProduct(resource.data) || isAdmin();
       
       // Only admins can write
       allow create: if isAdmin() && isValidProduct(request.resource.data);

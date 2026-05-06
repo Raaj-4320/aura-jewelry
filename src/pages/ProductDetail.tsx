@@ -14,7 +14,7 @@ import {
   Share2
 } from 'lucide-react';
 import { Product } from '../types';
-import { getDisplayProductBySlug, getDisplayProducts } from '../services/catalogService';
+import { getProductBySlug, getProducts } from '../services/firebaseService';
 import { formatPrice, cn } from '../lib/utils';
 import { useStoreSettings } from '../contexts/StoreSettingsContext';
 import ProductCard from '../components/ProductCard';
@@ -36,11 +36,11 @@ export default function ProductDetail() {
       if (!slug) return;
       setLoading(true);
       try {
-        const data = await getDisplayProductBySlug(slug);
+        const data = await getProductBySlug(slug);
         if (data) {
           setProduct(data);
           // Fetch related products
-          const allProducts = await getDisplayProducts();
+          const allProducts = await getProducts();
           const related = allProducts
             .filter((p) => p.category === data.category && p.id !== data.id)
             .slice(0, 4);
@@ -71,7 +71,7 @@ export default function ProductDetail() {
         <h2 className="text-2xl font-light text-deep-taupe">Piece Not Found</h2>
         {loadError && (
           <p className="max-w-md text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-center">
-            Catalog could not be loaded from CSV source. {loadError}
+            Catalog could not be loaded from Firestore source. {loadError}
           </p>
         )}
         <Link to="/shop" className="btn-primary">Back to Shop</Link>
