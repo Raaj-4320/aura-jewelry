@@ -1,20 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { onIdTokenChanged, User } from 'firebase/auth';
+import { auth } from '../firebase';
 
-function isAllowedAdminEmail(email?: string | null) {
-  return email === 'raj.golakiya0@gmail.com';
-}
-
-async function hasAdminRole(user: User): Promise<boolean> {
-  if (isAllowedAdminEmail(user.email)) return true;
+async function hasAdminClaim(user: User): Promise<boolean> {
   try {
-    const userSnap = await getDoc(doc(db, 'users', user.uid));
-    return !!userSnap.exists() && userSnap.data()?.role === 'admin';
-  } catch (error) {
-    console.error('Failed to verify admin role', error);
+    const tokenResult = await user.getIdTokenResult(true);
+    return tokenResult.claims.admin === true;
+  } catch {
     return false;
   }
 }
@@ -25,14 +18,14 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
   const location = useLocation();
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    const unsub = onIdTokenChanged(auth, async (user) => {
       if (!user) {
         setAuthorized(false);
         setAuthLoading(false);
         return;
       }
 
-      const isAdmin = await hasAdminRole(user);
+      const isAdmin = await hasAdminClaim(user);
       setAuthorized(isAdmin);
       setAuthLoading(false);
     });
@@ -52,7 +45,7 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
   }
 
   if (!authorized) {
-    return <Navigate to="/login" replace state={{ from: { pathname: location.pathname, search: location.search }, unauthorized: true }} />;
+    return <Navigate to="/admin-login" replace state={{ from: { pathname: location.pathname, search: location.search }, unauthorized: true }} />;
   }
 
   return <>{children}</>;
