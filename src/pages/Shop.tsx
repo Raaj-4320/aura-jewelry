@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Filter, Search, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { Product } from '../types';
-import { getDisplayProducts } from '../services/catalogService';
+import { getProducts } from '../services/firebaseService';
 import ProductCard from '../components/ProductCard';
 import { CATEGORIES, SUB_CATEGORIES } from '../constants';
 import { cn, normalizeCategory, normalizeSubcategory } from '../lib/utils';
@@ -25,7 +25,7 @@ export default function Shop() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const data = await getDisplayProducts();
+        const data = await getProducts();
         setProducts(data || []);
       } catch (error) {
         console.error(error);
@@ -240,7 +240,7 @@ export default function Shop() {
         {/* Product Grid */}
         {!loading && loadError && (
           <div className="mb-8 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-5 py-4 text-sm">
-            Catalog could not be loaded from CSV source. {loadError}
+            Catalog could not be loaded from Firestore source. {loadError}
           </div>
         )}
         {loading ? (

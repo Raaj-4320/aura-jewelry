@@ -10,6 +10,7 @@ const Shop = lazy(() => import('./pages/Shop'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
 const Login = lazy(() => import('./pages/Login'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/Admin/Dashboard'));
 const AdminProducts = lazy(() => import('./pages/Admin/Products'));
 const AdminAddProduct = lazy(() => import('./pages/Admin/AddProduct'));
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/product/:slug" element={<Layout><ProductDetail /></Layout>} />
           <Route path="/wishlist" element={<Layout><Wishlist /></Layout>} />
           <Route path="/login" element={<Layout><Login /></Layout>} />
+          <Route path="/admin-login" element={<Layout><AdminLogin /></Layout>} />
           <Route path="/account" element={<Layout><InfoPage title="Account" description="Sign in to access your account details and saved preferences." /></Layout>} />
           <Route path="/about" element={<Layout><InfoPage title="About Us" description="Sviwa Creation celebrates timeless luxury with curated jewelry crafted for modern elegance." /></Layout>} />
           <Route path="/contact" element={<Layout><InfoPage title="Contact" description="Reach Sviwa Creation on WhatsApp (+91 9274529394) or Instagram for product inquiries and styling assistance." /></Layout>} />
