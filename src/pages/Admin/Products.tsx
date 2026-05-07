@@ -22,6 +22,7 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     fetchProducts();
@@ -29,11 +30,15 @@ export default function Products() {
 
   const fetchProducts = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const data = await getAdminProducts();
       setProducts(data || []);
     } catch (error) {
-      console.error(error);
+      const message = error instanceof Error ? error.message : 'Failed to load products from Firestore.';
+      console.error('ADMIN_PRODUCTS_LOAD_FAILED', message);
+      setProducts([]);
+      setLoadError(message);
     } finally {
       setLoading(false);
     }
@@ -98,6 +103,11 @@ export default function Products() {
         </div>
 
         {/* Products Table */}
+        {!loading && loadError && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-5 py-4 text-sm">
+            Products could not be loaded from Firestore. {loadError}
+          </div>
+        )}
         <div className="bg-white rounded-[2.5rem] border border-rose-gold/10 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
