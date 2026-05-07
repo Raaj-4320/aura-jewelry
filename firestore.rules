@@ -1,51 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: products
-    // Document ID: auto-generated
-    // Fields:
-    //   - name: string (required, 1-100 chars)
-    //   - slug: string (required, unique-ish)
-    //   - category: string (required)
-    //   - subcategory: string
-    //   - price: number (positive)
-    //   - priceOnRequest: bool
-    //   - shortDescription: string (max 500)
-    //   - fullDescription: string (max 5000)
-    //   - thumbnailImage: string (URL)
-    //   - galleryImages: list of strings (URLs)
-    //   - featured: bool
-    //   - active: bool
-    //   - createdAt: timestamp
-    //   - updatedAt: timestamp
-    //
-    // Collection: users
-    // Document ID: auth.uid
-    // Fields:
-    //   - uid: string
-    //   - email: string
-    //   - role: string (admin/user)
-    //   - wishlist: list of strings (product IDs)
-    //
-    // ===============================================================
-
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-    
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      // Admin authorization is enforced by Firebase custom claims only.
-      // The `admin` claim must be assigned from a trusted server/admin environment.
-      // Never rely on client-writable documents or client code for privilege grants.
-      return isAuthenticated() && request.auth.token.admin == true;
+      return isAuthenticated() &&
+        request.auth.token.email is string &&
+        lower(request.auth.token.email) in [
+          'owner@example.com'
+        ];
     }
 
     function isOwner(userId) {
@@ -74,22 +39,14 @@ service cloud.firestore {
              data.role in ['admin', 'user'];
     }
 
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
     match /products/{productId} {
-      // Anyone can read public/active products. Admins can read all products.
       allow read: if isPublicProduct(resource.data) || isAdmin();
-      
-      // Only admins can write
       allow create: if isAdmin() && isValidProduct(request.resource.data);
       allow update: if isAdmin() && isValidProduct(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /users/{userId} {
-      // Users can read/write their own profile
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
       allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
