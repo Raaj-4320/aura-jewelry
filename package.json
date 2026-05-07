@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "repair:product-images:dry-run": "node scripts/repair-product-images-from-csv.mjs --dry-run",
+    "repair:product-images": "node scripts/repair-product-images-from-csv.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

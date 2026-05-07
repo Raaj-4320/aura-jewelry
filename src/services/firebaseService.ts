@@ -5,7 +5,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   limit,
   addDoc,
   updateDoc,
@@ -48,9 +47,59 @@ function normalizeProduct(raw: Record<string, any>, id: string): Product {
   const category = raw.category || normalizeCategory(raw.productCategory || raw.type || 'uncategorized');
   const subcategory = raw.subcategory || normalizeSubcategory(raw.jewelryType || raw.color || '');
   const tags = Array.isArray(raw.tags) ? raw.tags : [];
-  const images = Array.isArray(raw.images) ? raw.images.filter(Boolean) : [];
-  const galleryImages = Array.isArray(raw.galleryImages) ? raw.galleryImages.filter(Boolean) : images;
-  const thumbnailImage = raw.thumbnailImage || raw.mainImage || raw.image || raw.imageSrc || galleryImages[0] || '';
+  const toImageUrl = (value: unknown): string => {
+    if (typeof value === 'string') return value.trim();
+    if (value && typeof value === 'object') {
+      const candidate = (value as Record<string, unknown>).src
+        || (value as Record<string, unknown>).url
+        || (value as Record<string, unknown>).image;
+      return typeof candidate === 'string' ? candidate.trim() : '';
+    }
+    return '';
+  };
+
+  const pushImage = (value: unknown, position: number, bucket: Array<{ url: string; position: number }>) => {
+    const url = toImageUrl(value);
+    if (!url) return;
+    bucket.push({ url, position });
+  };
+
+  const candidates: Array<{ url: string; position: number }> = [];
+  const primaryCandidates = [raw.thumbnailImage, raw.mainImage, raw.image, raw.imageSrc];
+  primaryCandidates.forEach((candidate, index) => pushImage(candidate, index, candidates));
+
+  if (Array.isArray(raw.images)) {
+    raw.images.forEach((img: unknown, index: number) => {
+      if (img && typeof img === 'object') {
+        const imgRecord = img as Record<string, unknown>;
+        const positionCandidate = Number(imgRecord.position);
+        const parsedPosition = Number.isFinite(positionCandidate) ? positionCandidate : index + 10;
+        pushImage(img, parsedPosition, candidates);
+        return;
+      }
+      pushImage(img, index + 10, candidates);
+    });
+  }
+
+  if (Array.isArray(raw.galleryImages)) {
+    raw.galleryImages.forEach((img: unknown, index: number) => pushImage(img, index + 10, candidates));
+  }
+  if (Array.isArray(raw.variantImages)) {
+    raw.variantImages.forEach((img: unknown, index: number) => pushImage(img, index + 10, candidates));
+  }
+
+  const deduped = new Map<string, number>();
+  candidates.forEach(({ url, position }) => {
+    const existing = deduped.get(url);
+    if (existing === undefined || position < existing) deduped.set(url, position);
+  });
+  const sortedImages = Array.from(deduped.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map(([url]) => url);
+
+  const thumbnailImage = sortedImages[0] || '';
+  const galleryImages = sortedImages;
+  const images = sortedImages;
   const status = String(raw.status || '').toLowerCase();
   const activeByStatus = !status || status === 'active';
   const active = raw.active ?? (activeByStatus && raw.published !== false);
@@ -87,7 +136,7 @@ function normalizeProduct(raw: Record<string, any>, id: string): Product {
     descriptionHtml: raw.descriptionHtml,
     vendor: raw.vendor,
     tags,
-    mainImage: raw.mainImage || thumbnailImage,
+    mainImage: thumbnailImage,
     images,
     imageAlt: raw.imageAlt,
     jewelryType: raw.jewelryType,
@@ -108,7 +157,7 @@ function isPublicVisibleProduct(product: Product, raw: Record<string, any>) {
 export const getProducts = async (filters?: { category?: string; featured?: boolean; limit?: number }) => {
   const path = 'products';
   try {
-    let q = query(collection(db, path), orderBy('sortOrder', 'asc'));
+    let q = query(collection(db, path));
     
     if (filters?.category) {
       q = query(q, where('category', '==', filters.category));
@@ -121,14 +170,17 @@ export const getProducts = async (filters?: { category?: string; featured?: bool
     }
 
     const snapshot = await getDocs(q);
-    return snapshot.docs
+    const normalizedProducts = snapshot.docs
       .map((item) => {
         const raw = item.data() as Record<string, any>;
         const normalized = normalizeProduct(raw, item.id);
         return { normalized, raw };
       })
       .filter(({ normalized, raw }) => isPublicVisibleProduct(normalized, raw))
-      .map(({ normalized }) => normalized);
+      .map(({ normalized }) => normalized)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    return filters?.limit ? normalizedProducts.slice(0, filters.limit) : normalizedProducts;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);
   }
@@ -137,12 +189,14 @@ export const getProducts = async (filters?: { category?: string; featured?: bool
 export const getAdminProducts = async (filters?: { category?: string; featured?: boolean; limit?: number }) => {
   const path = 'products';
   try {
-    let q = query(collection(db, path), orderBy('sortOrder', 'asc'));
+    let q = query(collection(db, path));
     if (filters?.category) q = query(q, where('category', '==', filters.category));
     if (filters?.featured) q = query(q, where('featured', '==', true));
-    if (filters?.limit) q = query(q, limit(filters.limit));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((item) => normalizeProduct(item.data() as Record<string, any>, item.id));
+    const normalizedProducts = snapshot.docs
+      .map((item) => normalizeProduct(item.data() as Record<string, any>, item.id))
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    return filters?.limit ? normalizedProducts.slice(0, filters.limit) : normalizedProducts;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);
   }
@@ -151,8 +205,14 @@ export const getAdminProducts = async (filters?: { category?: string; featured?:
 export const getProductBySlug = async (slug: string) => {
   const path = 'products';
   try {
-    const q = query(collection(db, path), where('slug', '==', slug), limit(1));
-    const snapshot = await getDocs(q);
+    const slugQuery = query(collection(db, path), where('slug', '==', slug), limit(1));
+    let snapshot = await getDocs(slugQuery);
+    if (!snapshot.empty) {
+      return normalizeProduct(snapshot.docs[0].data() as Record<string, any>, snapshot.docs[0].id);
+    }
+
+    const handleQuery = query(collection(db, path), where('handle', '==', slug), limit(1));
+    snapshot = await getDocs(handleQuery);
     if (snapshot.empty) return null;
     return normalizeProduct(snapshot.docs[0].data() as Record<string, any>, snapshot.docs[0].id);
   } catch (error) {

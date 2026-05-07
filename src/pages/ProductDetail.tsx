@@ -79,7 +79,8 @@ export default function ProductDetail() {
     );
   }
 
-  const images = [product.thumbnailImage || JEWELRY_IMAGE_FALLBACK, ...(product.galleryImages || [])].filter(Boolean);
+  const realImages = (product.galleryImages || []).filter(Boolean);
+  const images = realImages.length > 0 ? realImages : [JEWELRY_IMAGE_FALLBACK];
   const instagramUrl = product.instagramUrl || settings.instagramUrl;
   const siteBaseUrl = (import.meta.env.APP_URL || window.location.origin || '').replace(/\/$/, '');
   const fallbackProductUrl = product.slug ? `${siteBaseUrl}/product/${product.slug}` : '';
@@ -163,9 +164,9 @@ export default function ProductDetail() {
           </div>
 
           {/* Thumbnails */}
-          {images.length > 1 && (
+          {realImages.length > 1 && (
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-              {images.map((img, idx) => (
+              {realImages.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveImage(idx)}
