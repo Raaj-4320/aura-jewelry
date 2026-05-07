@@ -1,5 +1,5 @@
 export const ADMIN_EMAIL_ALLOWLIST = [
-  'owner@example.com',
+  'sviwa.creation@gmail.com',
 ] as const;
 
 export function isApprovedAdminEmail(email: string | null | undefined): boolean {
