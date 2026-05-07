@@ -24,18 +24,26 @@ export default function Dashboard() {
     wishlistAdds: null as number | null,
   });
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     const fetchStats = async () => {
-      const products = await getAdminProducts();
-      if (products) {
-        setStats(prev => ({
-          ...prev,
-          totalProducts: products.length,
-          activeProducts: products.filter(p => p.active).length,
-          featuredProducts: products.filter(p => p.featured).length,
-        }));
-        setRecentProducts(products.slice(0, 5));
+      setLoadError('');
+      try {
+        const products = await getAdminProducts();
+        if (products) {
+          setStats(prev => ({
+            ...prev,
+            totalProducts: products.length,
+            activeProducts: products.filter(p => p.active).length,
+            featuredProducts: products.filter(p => p.featured).length,
+          }));
+          setRecentProducts(products.slice(0, 5));
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load dashboard products.';
+        console.error('ADMIN_DASHBOARD_LOAD_FAILED', message);
+        setLoadError(message);
       }
     };
     fetchStats();
@@ -67,6 +75,11 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
+        {loadError && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-5 py-4 text-sm">
+            Dashboard product stats could not be loaded from Firestore. {loadError}
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statCards.map((stat, idx) => (
             <motion.div

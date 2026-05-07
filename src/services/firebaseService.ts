@@ -5,7 +5,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   limit,
   addDoc,
   updateDoc,
@@ -108,7 +107,7 @@ function isPublicVisibleProduct(product: Product, raw: Record<string, any>) {
 export const getProducts = async (filters?: { category?: string; featured?: boolean; limit?: number }) => {
   const path = 'products';
   try {
-    let q = query(collection(db, path), orderBy('sortOrder', 'asc'));
+    let q = query(collection(db, path));
     
     if (filters?.category) {
       q = query(q, where('category', '==', filters.category));
@@ -121,14 +120,17 @@ export const getProducts = async (filters?: { category?: string; featured?: bool
     }
 
     const snapshot = await getDocs(q);
-    return snapshot.docs
+    const normalizedProducts = snapshot.docs
       .map((item) => {
         const raw = item.data() as Record<string, any>;
         const normalized = normalizeProduct(raw, item.id);
         return { normalized, raw };
       })
       .filter(({ normalized, raw }) => isPublicVisibleProduct(normalized, raw))
-      .map(({ normalized }) => normalized);
+      .map(({ normalized }) => normalized)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    return filters?.limit ? normalizedProducts.slice(0, filters.limit) : normalizedProducts;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);
   }
@@ -137,12 +139,14 @@ export const getProducts = async (filters?: { category?: string; featured?: bool
 export const getAdminProducts = async (filters?: { category?: string; featured?: boolean; limit?: number }) => {
   const path = 'products';
   try {
-    let q = query(collection(db, path), orderBy('sortOrder', 'asc'));
+    let q = query(collection(db, path));
     if (filters?.category) q = query(q, where('category', '==', filters.category));
     if (filters?.featured) q = query(q, where('featured', '==', true));
-    if (filters?.limit) q = query(q, limit(filters.limit));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((item) => normalizeProduct(item.data() as Record<string, any>, item.id));
+    const normalizedProducts = snapshot.docs
+      .map((item) => normalizeProduct(item.data() as Record<string, any>, item.id))
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    return filters?.limit ? normalizedProducts.slice(0, filters.limit) : normalizedProducts;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);
   }
@@ -151,8 +155,14 @@ export const getAdminProducts = async (filters?: { category?: string; featured?:
 export const getProductBySlug = async (slug: string) => {
   const path = 'products';
   try {
-    const q = query(collection(db, path), where('slug', '==', slug), limit(1));
-    const snapshot = await getDocs(q);
+    const slugQuery = query(collection(db, path), where('slug', '==', slug), limit(1));
+    let snapshot = await getDocs(slugQuery);
+    if (!snapshot.empty) {
+      return normalizeProduct(snapshot.docs[0].data() as Record<string, any>, snapshot.docs[0].id);
+    }
+
+    const handleQuery = query(collection(db, path), where('handle', '==', slug), limit(1));
+    snapshot = await getDocs(handleQuery);
     if (snapshot.empty) return null;
     return normalizeProduct(snapshot.docs[0].data() as Record<string, any>, snapshot.docs[0].id);
   } catch (error) {
