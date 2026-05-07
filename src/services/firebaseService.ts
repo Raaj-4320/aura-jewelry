@@ -47,9 +47,59 @@ function normalizeProduct(raw: Record<string, any>, id: string): Product {
   const category = raw.category || normalizeCategory(raw.productCategory || raw.type || 'uncategorized');
   const subcategory = raw.subcategory || normalizeSubcategory(raw.jewelryType || raw.color || '');
   const tags = Array.isArray(raw.tags) ? raw.tags : [];
-  const images = Array.isArray(raw.images) ? raw.images.filter(Boolean) : [];
-  const galleryImages = Array.isArray(raw.galleryImages) ? raw.galleryImages.filter(Boolean) : images;
-  const thumbnailImage = raw.thumbnailImage || raw.mainImage || raw.image || raw.imageSrc || galleryImages[0] || '';
+  const toImageUrl = (value: unknown): string => {
+    if (typeof value === 'string') return value.trim();
+    if (value && typeof value === 'object') {
+      const candidate = (value as Record<string, unknown>).src
+        || (value as Record<string, unknown>).url
+        || (value as Record<string, unknown>).image;
+      return typeof candidate === 'string' ? candidate.trim() : '';
+    }
+    return '';
+  };
+
+  const pushImage = (value: unknown, position: number, bucket: Array<{ url: string; position: number }>) => {
+    const url = toImageUrl(value);
+    if (!url) return;
+    bucket.push({ url, position });
+  };
+
+  const candidates: Array<{ url: string; position: number }> = [];
+  const primaryCandidates = [raw.thumbnailImage, raw.mainImage, raw.image, raw.imageSrc];
+  primaryCandidates.forEach((candidate, index) => pushImage(candidate, index, candidates));
+
+  if (Array.isArray(raw.images)) {
+    raw.images.forEach((img: unknown, index: number) => {
+      if (img && typeof img === 'object') {
+        const imgRecord = img as Record<string, unknown>;
+        const positionCandidate = Number(imgRecord.position);
+        const parsedPosition = Number.isFinite(positionCandidate) ? positionCandidate : index + 10;
+        pushImage(img, parsedPosition, candidates);
+        return;
+      }
+      pushImage(img, index + 10, candidates);
+    });
+  }
+
+  if (Array.isArray(raw.galleryImages)) {
+    raw.galleryImages.forEach((img: unknown, index: number) => pushImage(img, index + 10, candidates));
+  }
+  if (Array.isArray(raw.variantImages)) {
+    raw.variantImages.forEach((img: unknown, index: number) => pushImage(img, index + 10, candidates));
+  }
+
+  const deduped = new Map<string, number>();
+  candidates.forEach(({ url, position }) => {
+    const existing = deduped.get(url);
+    if (existing === undefined || position < existing) deduped.set(url, position);
+  });
+  const sortedImages = Array.from(deduped.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map(([url]) => url);
+
+  const thumbnailImage = sortedImages[0] || '';
+  const galleryImages = sortedImages;
+  const images = sortedImages;
   const status = String(raw.status || '').toLowerCase();
   const activeByStatus = !status || status === 'active';
   const active = raw.active ?? (activeByStatus && raw.published !== false);
@@ -86,7 +136,7 @@ function normalizeProduct(raw: Record<string, any>, id: string): Product {
     descriptionHtml: raw.descriptionHtml,
     vendor: raw.vendor,
     tags,
-    mainImage: raw.mainImage || thumbnailImage,
+    mainImage: thumbnailImage,
     images,
     imageAlt: raw.imageAlt,
     jewelryType: raw.jewelryType,
