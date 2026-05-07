@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, Lock } from 'lucide-react';
-import { signInAnonymously, signOut } from 'firebase/auth';
+import { ArrowRight, Mail } from 'lucide-react';
+import { isSignInWithEmailLink, sendSignInLinkToEmail, signInWithEmailLink } from 'firebase/auth';
 import toast from 'react-hot-toast';
 import { auth } from '../firebase';
+import { isApprovedAdminEmail } from '../config/admins';
 
-const COOLDOWN_MS = 10_000;
+const ADMIN_EMAIL_STORAGE_KEY = 'adminEmailForSignIn';
 
 function getSafeRedirectPath(location: ReturnType<typeof useLocation>) {
   const fallback = '/admin';
@@ -18,12 +19,10 @@ function getSafeRedirectPath(location: ReturnType<typeof useLocation>) {
 }
 
 export default function AdminLogin() {
-  const [passcode, setPasscode] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [cooldownUntil, setCooldownUntil] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
-  const verifyUrl = (import.meta.env.VITE_VERIFY_ADMIN_PASSCODE_URL || '').trim();
   const redirectPath = useMemo(() => getSafeRedirectPath(location), [location]);
 
   useEffect(() => {
@@ -32,48 +31,54 @@ export default function AdminLogin() {
     }
   }, [location.state]);
 
-  const handleUnlock = async (event: React.FormEvent) => {
+  useEffect(() => {
+    const completeEmailLinkSignIn = async () => {
+      if (!isSignInWithEmailLink(auth, window.location.href)) return;
+
+      const storedEmail = window.localStorage.getItem(ADMIN_EMAIL_STORAGE_KEY) || '';
+      if (!isApprovedAdminEmail(storedEmail)) {
+        toast.error('Please request a new admin sign-in link from an approved email.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await signInWithEmailLink(auth, storedEmail, window.location.href);
+        window.localStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
+        toast.success('Admin sign-in successful.');
+        navigate('/admin', { replace: true });
+      } catch {
+        toast.error('Unable to complete sign-in link authentication.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    completeEmailLinkSignIn();
+  }, [navigate]);
+
+  const handleSendLink = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!verifyUrl) {
-      toast.error('Admin verification is not configured.');
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!isApprovedAdminEmail(normalizedEmail)) {
+      toast.error('This email is not allowed for admin access.');
       return;
     }
-    if (Date.now() < cooldownUntil) return;
 
     setLoading(true);
     try {
-      if (!auth.currentUser) {
-        await signInAnonymously(auth);
-      }
-      const idToken = await auth.currentUser!.getIdToken();
-      const response = await fetch(verifyUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ passcode }),
+      await sendSignInLinkToEmail(auth, normalizedEmail, {
+        url: `${window.location.origin}/admin-login`,
+        handleCodeInApp: true,
       });
-
-      if (!response.ok) {
-        setCooldownUntil(Date.now() + COOLDOWN_MS);
-        throw new Error('invalid-passcode');
-      }
-
-      await auth.currentUser!.getIdToken(true);
-      toast.success('Admin access granted');
-      navigate(redirectPath, { replace: true });
+      window.localStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, normalizedEmail);
+      toast.success('Sign-in link sent. Open your email to continue.');
+      setEmail('');
     } catch {
-      toast.error('Unable to verify passcode.');
+      toast.error('Unable to send sign-in link. Check Firebase Auth Email Link settings.');
     } finally {
       setLoading(false);
-      setPasscode('');
     }
-  };
-
-  const handleLock = async () => {
-    await signOut(auth);
-    toast.success('Admin session locked');
   };
 
   return (
@@ -81,39 +86,35 @@ export default function AdminLogin() {
       <div className="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-sm border border-rose-gold/10">
         <div className="text-center space-y-4 mb-10">
           <div className="w-16 h-16 bg-blush rounded-full flex items-center justify-center mx-auto text-rose-gold mb-6">
-            <Lock size={28} />
+            <Mail size={28} />
           </div>
           <h1 className="text-3xl font-light text-deep-taupe uppercase tracking-widest">Admin Access</h1>
-          <p className="text-xs text-taupe tracking-widest uppercase">Enter shared admin passcode</p>
+          <p className="text-xs text-taupe tracking-widest uppercase">Sign in with your approved admin email</p>
         </div>
 
-        <form onSubmit={handleUnlock} className="space-y-6">
+        <form onSubmit={handleSendLink} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-4">Admin Passcode</label>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-4">Admin Email</label>
             <input
-              type="password"
+              type="email"
               required
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-              placeholder="••••••••"
-              autoComplete="current-password"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="owner@example.com"
+              autoComplete="email"
               className="w-full px-4 py-4 bg-warm-gray/50 border border-transparent rounded-2xl text-sm focus:bg-white focus:border-rose-gold/30 transition-all outline-none"
             />
           </div>
 
           <button
             type="submit"
-            disabled={loading || Date.now() < cooldownUntil}
+            disabled={loading}
             className="w-full btn-primary py-4 flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {loading ? 'Verifying...' : 'Unlock Admin'}
+            {loading ? 'Sending link...' : 'Send Sign-In Link'}
             {!loading && <ArrowRight size={16} />}
           </button>
         </form>
-
-        <button onClick={handleLock} className="mt-6 w-full text-xs uppercase tracking-widest text-taupe hover:underline">
-          Lock admin session
-        </button>
       </div>
     </div>
   );

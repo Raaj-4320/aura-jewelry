@@ -1,16 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { onIdTokenChanged, User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
-
-async function hasAdminClaim(user: User): Promise<boolean> {
-  try {
-    const tokenResult = await user.getIdTokenResult(true);
-    return tokenResult.claims.admin === true;
-  } catch {
-    return false;
-  }
-}
+import { isApprovedAdminEmail } from '../config/admins';
 
 export default function RequireAdmin({ children }: { children: React.ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
@@ -18,15 +10,14 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
   const location = useLocation();
 
   useEffect(() => {
-    const unsub = onIdTokenChanged(auth, async (user) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setAuthorized(false);
         setAuthLoading(false);
         return;
       }
 
-      const isAdmin = await hasAdminClaim(user);
-      setAuthorized(isAdmin);
+      setAuthorized(isApprovedAdminEmail(user.email));
       setAuthLoading(false);
     });
 
