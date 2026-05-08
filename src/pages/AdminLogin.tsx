@@ -74,8 +74,15 @@ export default function AdminLogin() {
       window.localStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, normalizedEmail);
       toast.success('Sign-in link sent. Open your email to continue.');
       setEmail('');
-    } catch {
-      toast.error('Unable to send sign-in link. Check Firebase Auth Email Link settings.');
+    } catch (error: unknown) {
+      const firebaseError = error as { code?: string; message?: string };
+      console.error('Failed to send admin sign-in link.', {
+        code: firebaseError?.code ?? 'unknown',
+        message: firebaseError?.message ?? 'Unknown error',
+      });
+      toast.error(
+        `Unable to send sign-in link${firebaseError?.code ? ` (${firebaseError.code})` : ''}. Check Firebase Auth Email Link settings.`,
+      );
     } finally {
       setLoading(false);
     }
@@ -100,7 +107,7 @@ export default function AdminLogin() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="owner@example.com"
+              placeholder="sviwa.creation@gmail.com"
               autoComplete="email"
               className="w-full px-4 py-4 bg-warm-gray/50 border border-transparent rounded-2xl text-sm focus:bg-white focus:border-rose-gold/30 transition-all outline-none"
             />
