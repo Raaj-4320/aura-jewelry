@@ -2,64 +2,77 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Aura Jewelry - Firebase + Vercel Setup
 
 ## Run locally
 
 1. Install dependencies: `npm install`
-2. Set `GEMINI_API_KEY` in `.env.local`
-3. Run: `npm run dev`
+2. Copy env template: `cp .env.example .env.local`
+3. Fill Firebase + app env vars in `.env.local`
+4. Start dev server: `npm run dev`
 
-## Admin authentication model (simple personal-app setup)
+## Firebase Console setup (required)
 
-This project uses **Firebase Auth Email Link passwordless login** for admin access.
+1. Open Firebase Console and select project: **sviwa-creation**.
+2. Enable **Firestore Database**.
+3. Open **Authentication -> Sign-in method** and enable:
+   - **Email/Password**
+   - **Email link (passwordless sign-in)**
+4. Open **Authentication -> Settings -> Authorized domains** and add:
+   - `sviwacreation.com`
+   - `www.sviwacreation.com`
+   - Your Vercel production domain
+   - Your Vercel preview domain(s)
 
-- Admin login route: `/admin-login`
-- Admin enters an approved email address.
-- Firebase sends a sign-in link.
-- Clicking the link signs the user in and redirects to `/admin`.
-- No Cloud Function is required for admin login.
+## Vercel environment variables
 
-Approved admin emails are centralized in:
+Set these in **Vercel Project Settings -> Environment Variables** (Preview + Production, and Development if used):
 
-- `src/config/admins.ts` (client-side route guard)
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MEASUREMENT_ID`
+- `VITE_CLOUDINARY_CLOUD_NAME` (optional, required for uploads)
+- `VITE_CLOUDINARY_UPLOAD_PRESET` (optional, required for uploads)
+
+Notes:
+- `VITE_` variables are public browser config.
+- Do **not** add Firebase Admin SDK/service-account credentials to frontend env vars.
+
+## Deploy Firestore rules
+
+After updating rules or admin allowlist:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+## Deploy flow
+
+1. Update Vercel env variables.
+2. Redeploy Vercel (env changes require a redeploy).
+3. Verify storefront products load from Firestore (`products` collection).
+
+## Admin login flow
+
+1. Open `/admin-login`.
+2. Enter an allowlisted admin email.
+3. Click the email sign-in link.
+4. Access `/admin` after sign-in completes.
+
+Admin allowlist is centralized in:
+
+- `src/config/admins.ts` (client checks)
 - `firestore.rules` (server-side write protection)
 
-> This is a simple personal-app admin model for small/private deployments. For larger teams, move admin authorization to a stronger backend-managed model.
+## Firestore data model guarantees
 
-## Firebase Console setup (exact steps)
-
-1. Open **Firebase Console → Authentication → Sign-in method**.
-2. Enable **Email/Password** provider.
-3. In the same provider settings, enable **Email link (passwordless sign-in)**.
-4. Open **Authentication → Settings → Authorized domains**.
-5. Add your production domain (for example: `your-app.vercel.app`).
-6. Add preview domains you actually use for sign-in testing.
-7. Save changes.
-
-## Firestore security model
-
-- Products remain the source of truth in Firestore.
-- Public product reads are allowed only when:
-  - `active == true` OR `status == "active"`
-  - and `published != false`
-- Product/settings writes require:
-  - `request.auth != null`
-  - `request.auth.token.email` present in the approved admin email list in rules (emails in rules must be lowercase).
-
-Deploy rules after any allowlist change.
-
-## Cloudinary configuration
-
-Image uploads are configured via env vars:
-
-- `VITE_CLOUDINARY_CLOUD_NAME`
-- `VITE_CLOUDINARY_UPLOAD_PRESET`
-
-Do not place Cloudinary secrets in frontend code.
-
-## Product data source
-
-- Storefront reads from Firestore (`products` collection).
-- Admin CRUD updates Firestore directly.
-- `public/products.csv` remains legacy reference only and is not used as runtime source.
+- Firestore `products` collection is the source of truth.
+- Public product reads require:
+  - `(active == true OR status == "active")`
+  - `published != false`
+- Product writes remain admin-only.
+- Passcode auth and Cloud Functions are not required for admin login.
