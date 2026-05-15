@@ -5,6 +5,7 @@ import { isSignInWithEmailLink, sendSignInLinkToEmail, signInWithEmailLink } fro
 import toast from 'react-hot-toast';
 import { auth } from '../firebase';
 import { isApprovedAdminEmail } from '../config/admins';
+import { logAuth } from '../utils/logger';
 
 const ADMIN_EMAIL_STORAGE_KEY = 'adminEmailForSignIn';
 
@@ -24,12 +25,18 @@ export default function AdminLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectPath = useMemo(() => getSafeRedirectPath(location), [location]);
+  const isAdminAuthBypassEnabled = import.meta.env.VITE_BYPASS_ADMIN_AUTH === 'true';
 
   useEffect(() => {
+    if (isAdminAuthBypassEnabled) {
+      logAuth('admin_login_bypassed_redirect_to_admin', { from: location.pathname });
+      navigate('/admin', { replace: true });
+      return;
+    }
     if ((location.state as any)?.unauthorized) {
       toast.error('Admin access required.');
     }
-  }, [location.state]);
+  }, [isAdminAuthBypassEnabled, location.pathname, location.state, navigate]);
 
   useEffect(() => {
     const completeEmailLinkSignIn = async () => {

@@ -16,6 +16,7 @@ import { auth } from '../firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
+import { logAuth, logError, logUI } from '../utils/logger';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -39,6 +40,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       toast.error('Logout failed');
     }
   };
+
+  const isAdminAuthBypassEnabled = import.meta.env.VITE_BYPASS_ADMIN_AUTH === 'true';
 
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -136,6 +139,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Page Content */}
         <div className="p-8">
+          {isAdminAuthBypassEnabled && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm">
+              Admin auth bypass is enabled for testing. Do not use in production.
+            </div>
+          )}
           {children}
         </div>
       </main>

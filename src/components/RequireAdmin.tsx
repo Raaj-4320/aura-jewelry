@@ -3,13 +3,23 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import { isApprovedAdminEmail } from '../config/admins';
+import { logAuth } from '../utils/logger';
 
 export default function RequireAdmin({ children }: { children: React.ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const location = useLocation();
 
+  const isAdminAuthBypassEnabled = import.meta.env.VITE_BYPASS_ADMIN_AUTH === 'true';
+
   useEffect(() => {
+    if (isAdminAuthBypassEnabled) {
+      logAuth('admin_auth_bypass_enabled', { path: location.pathname });
+      logAuth('admin_check_skipped_for_testing', { reason: 'VITE_BYPASS_ADMIN_AUTH=true' });
+      setAuthorized(true);
+      setAuthLoading(false);
+      return;
+    }
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setAuthorized(false);
@@ -22,7 +32,7 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
     });
 
     return () => unsub();
-  }, []);
+  }, [isAdminAuthBypassEnabled, location.pathname]);
 
   if (authLoading) {
     return (
