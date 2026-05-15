@@ -5,32 +5,83 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function isRoleAdmin() {
       return isAuthenticated() &&
-        request.auth.token.email is string &&
-        request.auth.token.email in [
-          'sviwa.creation@gmail.com'
-        ];
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        isRoleAdmin() ||
+        (request.auth.token.email is string && request.auth.token.email == 'sviwa.creation@gmail.com')
+      );
     }
 
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isValidProduct(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.slug is string && data.slug.size() > 0 &&
-             data.category is string &&
-             data.price is number && data.price >= 0 &&
-             data.thumbnailImage is string &&
-             data.active is bool;
+    function isPublicProduct(data) {
+      return data.active == true;
     }
 
-    function isPublicProduct(data) {
-      return (
-        (data.active == true || (data.status is string && data.status == 'active')) &&
-        data.published != false
-      );
+    function hasAllowedProductKeys(data) {
+      return data.keys().hasOnly([
+        'id', 'handle', 'slug', 'title', 'name', 'descriptionHtml', 'descriptionText', 'description',
+        'shortDescription', 'fullDescription', 'vendor', 'productCategory', 'category', 'type',
+        'subcategory', 'tags', 'styleTags', 'occasionTags', 'material', 'careInstructions',
+        'published', 'status', 'active', 'featured', 'trending', 'bridal', 'madeToOrder', 'onlyFewLeft',
+        'price', 'compareAtPrice', 'sellPrice', 'priceOnRequest', 'currency',
+        'sku', 'barcode', 'inventoryQty', 'inventoryPolicy',
+        'requiresShipping', 'taxable', 'weightGrams', 'weightUnit', 'costPerItem',
+        'inventory', 'shipping', 'options', 'variants',
+        'thumbnailImage', 'image', 'imageSrc', 'mainImage', 'images', 'galleryImages', 'variantImages', 'imageAlt',
+        'seoTitle', 'seoDescription', 'seo', 'googleShopping', 'metafields', 'source',
+        'instagramUrl', 'whatsappEnabled', 'sortOrder',
+        'createdAt', 'updatedAt'
+      ]);
+    }
+
+    function isValidProductCore(data) {
+      return hasAllowedProductKeys(data) &&
+        (!('name' in data) || data.name is string) &&
+        (!('title' in data) || data.title is string) &&
+        (!('slug' in data) || data.slug is string) &&
+        (!('handle' in data) || data.handle is string) &&
+        (!('category' in data) || data.category is string) &&
+        (!('active' in data) || data.active is bool) &&
+        (!('status' in data) || data.status is string) &&
+        (!('published' in data) || data.published is bool) &&
+        (!('price' in data) || data.price is number) &&
+        (!('compareAtPrice' in data) || data.compareAtPrice is number) &&
+        (!('sellPrice' in data) || data.sellPrice is number) &&
+        (!('costPerItem' in data) || data.costPerItem is number) &&
+        (!('inventoryQty' in data) || data.inventoryQty is number) &&
+        (!('weightGrams' in data) || data.weightGrams is number) &&
+        (!('thumbnailImage' in data) || data.thumbnailImage is string) &&
+        (!('image' in data) || data.image is string) &&
+        (!('imageSrc' in data) || data.imageSrc is string) &&
+        (!('mainImage' in data) || data.mainImage is string) &&
+        (!('images' in data) || data.images is list) &&
+        (!('galleryImages' in data) || data.galleryImages is list) &&
+        (!('tags' in data) || data.tags is list || data.tags is string) &&
+        (!('createdAt' in data) || data.createdAt is timestamp) &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidProductCreate(data) {
+      return isValidProductCore(data) &&
+        ((('name' in data) && data.name is string && data.name.size() > 0) ||
+         (('title' in data) && data.title is string && data.title.size() > 0) ||
+         (('slug' in data) && data.slug is string && data.slug.size() > 0) ||
+         (('handle' in data) && data.handle is string && data.handle.size() > 0));
+    }
+
+    function isValidProductUpdate(data) {
+      return isValidProductCore(data) &&
+        data.diff(resource.data).affectedKeys().hasOnly(data.keys());
     }
 
     function isValidUser(data) {
@@ -40,9 +91,9 @@ service cloud.firestore {
     }
 
     match /products/{productId} {
-      allow read: if isPublicProduct(resource.data) || isAdmin();
-      allow create: if isAdmin() && isValidProduct(request.resource.data);
-      allow update: if isAdmin() && isValidProduct(request.resource.data);
+      allow read: if isAdmin() || isPublicProduct(resource.data);
+      allow create: if isAdmin() && isValidProductCreate(request.resource.data);
+      allow update: if isAdmin() && isValidProductUpdate(request.resource.data);
       allow delete: if isAdmin();
     }
 
