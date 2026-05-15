@@ -5,12 +5,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function isRoleAdmin() {
       return isAuthenticated() &&
-        request.auth.token.email is string &&
-        request.auth.token.email in [
-          'sviwa.creation@gmail.com'
-        ];
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        isRoleAdmin() ||
+        (request.auth.token.email is string && request.auth.token.email == 'sviwa.creation@gmail.com')
+      );
     }
 
     function isOwner(userId) {
@@ -27,10 +33,7 @@ service cloud.firestore {
     }
 
     function isPublicProduct(data) {
-      return (
-        (data.active == true || (data.status is string && data.status == 'active')) &&
-        data.published != false
-      );
+      return data.active == true;
     }
 
     function isValidUser(data) {

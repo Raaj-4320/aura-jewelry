@@ -15,6 +15,7 @@ import { db } from '../../firebase';
 import { CATEGORIES, SUB_CATEGORIES } from '../../constants';
 import { generateSlug, normalizeCategory, normalizeSubcategory } from '../../lib/utils';
 import toast from 'react-hot-toast';
+import { logCloudinary, logDB, logError, logProduct, logRoute, logUI } from '../../utils/logger';
 import { createProduct, getProductById, updateProduct } from '../../services/firebaseService';
 
 export default function AddProduct() {
@@ -24,6 +25,8 @@ export default function AddProduct() {
 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [existingSlug, setExistingSlug] = useState('');
+  const [existingProductRaw, setExistingProductRaw] = useState<Record<string, any> | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     category: CATEGORIES[0].slug,
@@ -41,6 +44,25 @@ export default function AddProduct() {
     onlyFewLeft: false,
     whatsappEnabled: true,
     instagramUrl: '',
+    handle: '',
+    title: '',
+    productCategory: '',
+    type: '',
+    tagsInput: '',
+    published: true,
+    status: 'active',
+    compareAtPrice: 0,
+    costPerItem: 0,
+    sku: '',
+    barcode: '',
+    inventoryQty: 0,
+    inventoryPolicy: '',
+    requiresShipping: true,
+    taxable: true,
+    weightGrams: 0,
+    weightUnit: '',
+    seoTitle: '',
+    seoDescription: '',
     thumbnailImage: '',
     galleryImages: [] as string[],
     active: true,
@@ -54,11 +76,17 @@ export default function AddProduct() {
   const isCloudinaryConfigured = !!cloudName && !!uploadPreset;
 
   useEffect(() => {
+    logRoute('route_rendered', { page: isEdit ? 'AdminEditProduct' : 'AdminAddProduct', path: window.location.pathname });
+    logProduct(isEdit ? 'edit_product_page_loaded' : 'add_product_page_loaded', { mode: isEdit ? 'edit' : 'create', productId: id });
     if (isEdit) {
       const fetchProduct = async () => {
+        logDB('getProductById_request_start', { id });
         const product = await getProductById(id!);
         if (product) {
+          logDB('getProductById_request_success', { id: (product as any).id, name: (product as any).name, slug: (product as any).slug });
           const data = product as any;
+          setExistingSlug(data.slug || '');
+          setExistingProductRaw(data);
           setFormData({
             ...data,
             category: normalizeCategory(data.category || CATEGORIES[0].slug),
@@ -85,6 +113,7 @@ export default function AddProduct() {
 
     setUploading(true);
     try {
+      logCloudinary('upload_config_check', { hasCloudName: !!cloudName, hasUploadPreset: !!uploadPreset });
       if (!isCloudinaryConfigured) {
         toast.error('Image upload is unavailable: configure Cloudinary in environment settings.');
         return;
@@ -94,6 +123,7 @@ export default function AddProduct() {
       uploadData.append('file', file);
       uploadData.append('upload_preset', uploadPreset);
 
+      logCloudinary('upload_start', { fileName: file.name, fileType: file.type, fileSize: file.size, endpoint: 'api.cloudinary.com' });
       const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
         body: uploadData,
@@ -103,6 +133,7 @@ export default function AddProduct() {
         throw new Error(data?.error?.message || 'Upload failed');
       }
 
+      logCloudinary('upload_success', { secure_url: data.secure_url, public_id: data.public_id, width: data.width, height: data.height });
       if (isThumbnail) {
         setFormData(prev => ({ ...prev, thumbnailImage: data.secure_url }));
       } else {
@@ -148,22 +179,63 @@ export default function AddProduct() {
 
     setLoading(true);
     try {
-      const slug = await getUniqueSlug(formData.name);
+      const slug = isEdit ? (existingSlug || await getUniqueSlug(formData.name)) : await getUniqueSlug(formData.name);
       if (!slug) {
         toast.error('Please enter a valid product name');
         setLoading(false);
         return;
       }
 
+      const normalizedGallery = (formData.galleryImages || []).filter(Boolean);
+      const normalizedImages = normalizedGallery.map((src, index) => ({ src, position: index + 1, alt: formData.name || '', source: 'admin' }));
+
+      logUI('product_submit_clicked', { mode: isEdit ? 'edit' : 'create', name: formData.name, slug, imageCount: (formData.galleryImages||[]).length });
+      logProduct('product_payload_build_start');
       const productData = {
+        ...(isEdit && existingProductRaw ? existingProductRaw : {}),
         ...formData,
+        handle: formData.handle?.trim() || existingProductRaw?.handle || slug,
+        title: formData.title?.trim() || formData.name.trim(),
         name: formData.name.trim(),
         slug,
+        productCategory: formData.productCategory || formData.category,
+        type: formData.type || '',
+        tags: String((formData as any).tagsInput || '').split(',').map((t) => t.trim()).filter(Boolean),
         category: normalizeCategory(formData.category),
         subcategory: normalizeSubcategory(formData.subcategory),
+        published: !!(formData as any).published,
+        status: (formData as any).status || 'active',
+        compareAtPrice: Number((formData as any).compareAtPrice || 0),
+        sku: (formData as any).sku || '',
+        barcode: (formData as any).barcode || '',
+        inventory: {
+          ...(existingProductRaw?.inventory || {}),
+          qty: Number((formData as any).inventoryQty || 0),
+          policy: (formData as any).inventoryPolicy || '',
+        },
+        shipping: {
+          ...(existingProductRaw?.shipping || {}),
+          requiresShipping: !!(formData as any).requiresShipping,
+          taxable: !!(formData as any).taxable,
+          grams: Number((formData as any).weightGrams || 0),
+          weightUnit: (formData as any).weightUnit || '',
+          costPerItem: Number((formData as any).costPerItem || 0),
+        },
+        seo: {
+          ...(existingProductRaw?.seo || {}),
+          title: (formData as any).seoTitle || '',
+          description: (formData as any).seoDescription || '',
+        },
+        galleryImages: normalizedGallery,
+        images: normalizedImages,
+        thumbnailImage: formData.thumbnailImage || normalizedGallery[0] || '',
+        image: formData.thumbnailImage || normalizedGallery[0] || '',
+        imageSrc: formData.thumbnailImage || normalizedGallery[0] || '',
+        mainImage: formData.thumbnailImage || normalizedGallery[0] || '',
         currency: 'INR',
       };
 
+      logProduct('product_payload_build_success', { imageCount: normalizedImages.length, galleryCount: normalizedGallery.length, hasThumb: !!(formData.thumbnailImage || normalizedGallery[0]) });
       if (isEdit) {
         await updateProduct(id!, productData);
         toast.success('Product updated');
@@ -173,7 +245,7 @@ export default function AddProduct() {
       }
       navigate('/admin/products');
     } catch (error) {
-      toast.error('Failed to save product');
+      toast.error(error instanceof Error ? error.message : 'Failed to save product');
     } finally {
       setLoading(false);
     }
@@ -219,6 +291,19 @@ export default function AddProduct() {
                     placeholder="e.g. Rose Gold Luminescence Ring"
                     className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm focus:bg-white focus:border-rose-gold/30 transition-all outline-none"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-2">Handle</label>
+                    <input type="text" name="handle" value={(formData as any).handle} onChange={handleInputChange} className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-2">Status</label>
+                    <select name="status" value={(formData as any).status} onChange={handleInputChange} className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm">
+                      <option value="active">active</option><option value="draft">draft</option><option value="archived">archived</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -269,6 +354,14 @@ export default function AddProduct() {
                     />
                     <label htmlFor="priceOnRequest" className="text-xs font-medium text-taupe uppercase tracking-widest">Price on Request</label>
                   </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-2">Tags (comma separated)</label><input type="text" name="tagsInput" value={(formData as any).tagsInput} onChange={handleInputChange} className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm" /></div>
+                  <div className="space-y-2"><label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-2">Vendor</label><input type="text" name="vendor" value={(formData as any).vendor || ''} onChange={handleInputChange} className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-2">SEO Title</label><input type="text" name="seoTitle" value={(formData as any).seoTitle} onChange={handleInputChange} className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm" /></div>
+                  <div className="space-y-2"><label className="text-[10px] font-semibold uppercase tracking-widest text-taupe ml-2">SEO Description</label><input type="text" name="seoDescription" value={(formData as any).seoDescription} onChange={handleInputChange} className="w-full px-6 py-4 bg-warm-gray/30 border border-transparent rounded-2xl text-sm" /></div>
+                </div>
                 </div>
               </div>
             </div>
