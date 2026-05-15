@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowRight, Star, Instagram } from 'lucide-react';
 import { Product } from '../types';
-import { getDisplayProducts } from '../services/catalogService';
+import { getProducts } from '../services/firebaseService';
 import ProductCard from '../components/ProductCard';
 import { CATEGORIES, JEWELRY_IMAGE_FALLBACK } from '../constants';
 import { normalizeCategory, normalizeSubcategory } from '../lib/utils';
@@ -46,7 +46,7 @@ export default function Home() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const data = await getDisplayProducts();
+        const data = await getProducts();
         setAllProducts(data || []);
       } catch (error) {
         console.error(error);
@@ -192,7 +192,7 @@ export default function Home() {
           {loadError && (
             <section className="max-w-7xl mx-auto px-6">
               <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-5 py-4 text-sm">
-                Catalog could not be loaded from CSV source. {loadError}
+                Catalog could not be loaded from Firestore source. {loadError}
               </div>
             </section>
           )}
