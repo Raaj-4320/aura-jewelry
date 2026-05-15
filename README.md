@@ -76,3 +76,78 @@ Admin allowlist is centralized in:
   - `published != false`
 - Product writes remain admin-only.
 - Passcode auth and Cloud Functions are not required for admin login.
+
+## Admin Debug Logging (Vercel verification)
+
+Debug logs are centralized in `src/utils/logger.ts`.
+
+- Enable/disable with `VITE_ENABLE_DEBUG_LOGS` (`false` disables logs). Default is enabled for verification.
+- Prefixes:
+  - `[SYSTEM]`, `[ROUTE]`, `[AUTH]`, `[UI]`, `[PRODUCT]`, `[IMPORT]`, `[DB]`, `[CLOUDINARY]`, `[WHATSAPP]`, `[ERROR]`
+
+### Vercel smoke checklist using logs
+1. Load site: expect `[SYSTEM] app_loaded`
+2. Login/admin area: expect `[AUTH]` listener/state logs
+3. `/admin/products`: expect `[DB] getAdminProducts_request_start/success`
+4. `/admin/products/add`: expect add/edit page + form logs
+5. Upload image: expect `[CLOUDINARY] upload_start/success`
+6. Save product: expect create/update DB logs
+7. `/admin/products/import`: expect existing-summary logs
+8. Upload CSV/XLSX: expect parse + dry run/import logs
+9. Confirm import: expect per-process `[IMPORT]` completion logs
+10. `/shop`: expect Firestore product fetch logs
+11. `/product/:slug`: expect detail fetch + render logs
+12. WhatsApp click: expect `[WHATSAPP] whatsapp_message_built`
+
+
+## Temporary Admin Auth Bypass for Testing
+
+Set this env var in **Vercel Preview** only:
+
+- `VITE_BYPASS_ADMIN_AUTH=true`
+
+Behavior:
+- `/admin-login` redirects to `/admin`
+- Admin routes render without Firebase auth gate during testing
+- A visible admin warning banner appears on admin pages
+
+Important warnings:
+- This bypass only affects frontend route gating.
+- Firestore rules still apply; unauthenticated writes may fail.
+- For full write testing, use an authenticated admin session or a staging Firebase project with safe temporary rules.
+- Disable/remove this env var before production.
+
+
+## Real Firebase Email-Link Admin Login (incognito test)
+
+Set in Vercel environment variables:
+
+- `VITE_BYPASS_ADMIN_AUTH=false`
+- `VITE_ENABLE_DEBUG_LOGS=true`
+
+Then redeploy.
+
+Firebase Console setup required:
+1. Authentication → Sign-in method
+   - Enable **Email/Password**
+   - Enable **Email link (passwordless sign-in)**
+2. Authentication → Settings → Authorized domains
+   - Add your Vercel domain(s), e.g. `your-project.vercel.app`
+   - Add custom production domain if used
+
+Incognito verification:
+1. Open `/admin` (should redirect to `/admin-login`)
+2. Confirm prefilled email: `sviwa.creation@gmail.com`
+3. Click **Send Login Link**
+4. Confirm console log: `[AUTH] admin_email_link_send_success`
+5. Open email link
+6. Confirm logs:
+   - `[AUTH] admin_email_link_detected`
+   - `[AUTH] admin_email_link_signin_success`
+   - `[ROUTE] admin_login_redirect_after_email_link`
+7. Confirm `/admin/products` loads Firestore data
+
+Notes:
+- Frontend bypass only controls page access.
+- Firestore rules still enforce authenticated/admin writes.
+- If you see `Missing or insufficient permissions`, confirm authenticated admin session and rules.

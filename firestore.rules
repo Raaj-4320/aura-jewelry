@@ -27,10 +27,7 @@ service cloud.firestore {
     }
 
     function isPublicProduct(data) {
-      return (
-        (data.active == true || (data.status is string && data.status == 'active')) &&
-        data.published != false
-      );
+      return data.active == true;
     }
 
     function isValidUser(data) {
