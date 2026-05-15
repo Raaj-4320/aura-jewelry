@@ -76,3 +76,25 @@ Admin allowlist is centralized in:
   - `published != false`
 - Product writes remain admin-only.
 - Passcode auth and Cloud Functions are not required for admin login.
+
+## Admin Debug Logging (Vercel verification)
+
+Debug logs are centralized in `src/utils/logger.ts`.
+
+- Enable/disable with `VITE_ENABLE_DEBUG_LOGS` (`false` disables logs). Default is enabled for verification.
+- Prefixes:
+  - `[SYSTEM]`, `[ROUTE]`, `[AUTH]`, `[UI]`, `[PRODUCT]`, `[IMPORT]`, `[DB]`, `[CLOUDINARY]`, `[WHATSAPP]`, `[ERROR]`
+
+### Vercel smoke checklist using logs
+1. Load site: expect `[SYSTEM] app_loaded`
+2. Login/admin area: expect `[AUTH]` listener/state logs
+3. `/admin/products`: expect `[DB] getAdminProducts_request_start/success`
+4. `/admin/products/add`: expect add/edit page + form logs
+5. Upload image: expect `[CLOUDINARY] upload_start/success`
+6. Save product: expect create/update DB logs
+7. `/admin/products/import`: expect existing-summary logs
+8. Upload CSV/XLSX: expect parse + dry run/import logs
+9. Confirm import: expect per-process `[IMPORT]` completion logs
+10. `/shop`: expect Firestore product fetch logs
+11. `/product/:slug`: expect detail fetch + render logs
+12. WhatsApp click: expect `[WHATSAPP] whatsapp_message_built`
