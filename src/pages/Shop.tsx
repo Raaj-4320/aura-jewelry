@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Filter, Search, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { Product } from '../types';
+import { logProduct } from '../utils/logger';
 import { getProducts } from '../services/firebaseService';
 import ProductCard from '../components/ProductCard';
 import { CATEGORIES, SUB_CATEGORIES } from '../constants';
@@ -27,6 +28,7 @@ export default function Shop() {
       try {
         const data = await getProducts();
         setProducts(data || []);
+        logProduct('public_products_visible_count', { count: (data || []).length });
       } catch (error) {
         console.error(error);
         setProducts([]);
