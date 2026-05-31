@@ -1,34 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Gem, 
   PlusCircle, 
-  FileUp,
-  Settings, 
+  Settings,
+  PanelsTopLeft,
   LogOut, 
   Menu, 
   X,
-  ChevronRight,
-  Bell
+  Tags
 } from 'lucide-react';
 import { auth } from '../firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
+import { logAuth, logError, logUI } from '../utils/logger';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [user, setUser] = useState(auth.currentUser);
   const location = useLocation();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-    });
-    return () => unsubscribe();
-  }, [navigate]);
+
 
   const handleLogout = async () => {
     try {
@@ -40,11 +34,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
+  const isAdminAuthBypassEnabled = import.meta.env.VITE_BYPASS_ADMIN_AUTH === 'true';
+
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Products', path: '/admin/products', icon: Gem },
     { name: 'Add Product', path: '/admin/products/add', icon: PlusCircle },
-    { name: 'Bulk Import', path: '/admin/products/import', icon: FileUp },
+    { name: 'Categories', path: '/admin/categories', icon: Tags },
+    { name: 'Storefront', path: '/admin/storefront', icon: PanelsTopLeft },
     { name: 'Settings', path: '/admin/settings', icon: Settings },
   ];
 
@@ -62,7 +59,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="h-20 flex items-center px-6 border-b border-warm-gray">
             <Link to="/" className="flex flex-col items-start">
               <span className={cn("font-light tracking-[0.2em] text-deep-taupe uppercase transition-all", isSidebarOpen ? "text-xl" : "text-xs")}>
-                Aura
+                Sviwa
               </span>
               {isSidebarOpen && <span className="text-[0.5rem] tracking-[0.4em] text-taupe uppercase -mt-1">Admin</span>}
             </Link>
@@ -102,40 +99,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Content */}
       <main className={cn("flex-grow transition-all duration-300", isSidebarOpen ? "ml-64" : "ml-20")}>
-        {/* Top Bar */}
-        <header className="h-20 bg-white border-b border-rose-gold/10 px-8 flex items-center justify-between sticky top-0 z-40">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-taupe p-2 hover:bg-warm-gray rounded-lg">
-              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-            <div className="hidden md:flex items-center gap-2 text-xs text-taupe/60 uppercase tracking-widest">
-              <span>Admin</span>
-              <ChevronRight size={12} />
-              <span className="text-deep-taupe font-medium">{location.pathname.split('/').pop() || 'Dashboard'}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="hidden sm:block text-[10px] uppercase tracking-widest text-taupe/60 bg-warm-gray/50 px-4 py-2 rounded-full">
-              Search coming soon
-            </div>
-            <div className="relative text-taupe p-2" title="Notifications unavailable">
-              <Bell size={20} />
-            </div>
-            <div className="flex items-center gap-3 pl-6 border-l border-warm-gray">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-semibold text-deep-taupe">{user?.email?.split('@')[0]}</p>
-                <p className="text-[10px] text-taupe uppercase tracking-widest">Administrator</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-rose-gold-light flex items-center justify-center text-rose-gold font-bold">
-                {user?.email?.[0].toUpperCase()}
-              </div>
-            </div>
-          </div>
-        </header>
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="fixed top-3 z-40 rounded-xl border border-rose-gold/20 bg-white p-2 text-taupe shadow-sm hover:bg-blush" style={{ left: isSidebarOpen ? '16.75rem' : '5.75rem' }} aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}>
+          {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+        </button>
 
         {/* Page Content */}
-        <div className="p-8">
+        <div className="p-4 sm:p-5 lg:p-6">
+          {isAdminAuthBypassEnabled && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm">
+              Admin auth bypass is enabled for testing. Do not use in production.
+            </div>
+          )}
           {children}
         </div>
       </main>

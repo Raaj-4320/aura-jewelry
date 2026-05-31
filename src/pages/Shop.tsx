@@ -3,12 +3,14 @@ import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Filter, Search, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { Product } from '../types';
+import { logProduct } from '../utils/logger';
 import { getProducts } from '../services/firebaseService';
 import ProductCard from '../components/ProductCard';
-import { CATEGORIES, SUB_CATEGORIES } from '../constants';
+import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { cn, normalizeCategory, normalizeSubcategory } from '../lib/utils';
 
 export default function Shop() {
+  const { categories, subcategories } = useCatalogCategories();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,7 @@ export default function Shop() {
       try {
         const data = await getProducts();
         setProducts(data || []);
+        logProduct('public_products_visible_count', { count: (data || []).length });
       } catch (error) {
         console.error(error);
         setProducts([]);
@@ -161,7 +164,7 @@ export default function Shop() {
                     >
                       All
                     </button>
-                    {CATEGORIES.map(cat => (
+                    {categories.map(cat => (
                       <button
                         key={cat.id}
                         onClick={() => updateFilter('category', cat.slug)}
@@ -189,7 +192,7 @@ export default function Shop() {
                     >
                       All
                     </button>
-                    {SUB_CATEGORIES.map(sub => (
+                    {subcategories.map(sub => (
                       <button
                         key={sub.id}
                         onClick={() => updateFilter('subcategory', sub.id)}

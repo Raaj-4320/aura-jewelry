@@ -35,7 +35,7 @@ export default function Login() {
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
-        toast.success('Welcome back to Aura');
+        toast.success('Welcome back to Sviwa Creation');
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
         toast.success('Account created successfully');
