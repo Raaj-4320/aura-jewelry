@@ -1,12 +1,12 @@
 export const COLORS = {
-  roseGold: '#E5B4A2',
+  roseGold: '#DDA08A',
   lightRoseGold: '#F8E8E2',
   ivory: '#FDFCFB',
   blush: '#FFF5F2',
   champagne: '#F7E7CE',
-  taupe: '#8E8279',
+  taupe: '#7D7068',
   warmGray: '#F5F5F5',
-  deepTaupe: '#4A4440',
+  deepTaupe: '#3F3935',
 };
 
 export const CATEGORIES = [
@@ -50,6 +50,6 @@ export const JEWELRY_IMAGE_FALLBACK =
         </linearGradient>
       </defs>
       <rect width="800" height="1000" fill="url(#bg)"/>
-      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#8E8279" font-size="40" font-family="Arial, sans-serif" letter-spacing="8">SVIWA</text>
+      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#7D7068" font-size="40" font-family="Arial, sans-serif" letter-spacing="8">SVIWA</text>
     </svg>`
   );

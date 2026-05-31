@@ -7,16 +7,23 @@ import {
   MessageCircle,
   Instagram,
   Cloud,
+  KeyRound,
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { auth } from '../../firebase';
+import { logAuth, logError } from '../../utils/logger';
 
 export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordConfigured, setPasswordConfigured] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [settings, setSettings] = useState({
-    brandName: 'Aura Jewelry',
+    brandName: 'Sviwa Creation',
     brandDescription: 'Premium luxury jewelry boutique for women.',
     whatsappNumber: '',
     instagramUrl: '',
@@ -28,7 +35,9 @@ export default function Settings() {
         const docRef = doc(db, 'settings', 'general');
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setSettings(prev => ({ ...prev, ...docSnap.data() }));
+          const data = docSnap.data();
+          setSettings(prev => ({ ...prev, brandName: data.brandName || prev.brandName, brandDescription: data.brandDescription || prev.brandDescription, whatsappNumber: data.whatsappNumber || '', instagramUrl: data.instagramUrl || '' }));
+          setPasswordConfigured(data.passwordConfigured === true);
         }
       } catch (error) {
         console.error("Error fetching settings:", error);
@@ -59,6 +68,45 @@ export default function Settings() {
       toast.error('Failed to update settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const user = auth.currentUser;
+    if (!user?.email) return toast.error('Sign in again before setting your admin password.');
+    if (passwordForm.newPassword.length < 8) return toast.error('Use at least 8 characters for the new password.');
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) return toast.error('New password and confirmation do not match.');
+    if (passwordConfigured && !passwordForm.currentPassword) return toast.error('Enter your current password.');
+
+    setSavingPassword(true);
+    logAuth(passwordConfigured ? 'admin_password_change_start' : 'admin_password_setup_start', { uid: user.uid, email: user.email });
+    try {
+      if (passwordConfigured) {
+        const credential = EmailAuthProvider.credential(user.email, passwordForm.currentPassword);
+        await reauthenticateWithCredential(user, credential);
+      }
+      await updatePassword(user, passwordForm.newPassword);
+      await setDoc(doc(db, 'settings', 'general'), { passwordConfigured: true, updatedAt: serverTimestamp() }, { merge: true });
+      setPasswordConfigured(true);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      logAuth(passwordConfigured ? 'admin_password_change_success' : 'admin_password_setup_success', { uid: user.uid, email: user.email });
+      toast.success(passwordConfigured ? 'Admin password changed successfully.' : 'Admin password created. Use it for your next login.');
+    } catch (error) {
+      const firebaseError = error as { code?: string };
+      logError(passwordConfigured ? 'admin_password_change_failure' : 'admin_password_setup_failure', error, { code: firebaseError.code });
+      if (firebaseError.code === 'auth/requires-recent-login') toast.error('Sign out and use the secure email login link again, then retry immediately.');
+      else if (firebaseError.code === 'auth/invalid-credential' || firebaseError.code === 'auth/wrong-password') toast.error('Current password is incorrect.');
+      else if (firebaseError.code === 'auth/weak-password') toast.error('Choose a stronger password that meets your Firebase password policy.');
+      else toast.error('Unable to save the admin password. Please try again.');
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -179,6 +227,19 @@ export default function Settings() {
               Save Changes
             </button>
           </div>
+        </form>
+
+        <form onSubmit={handlePasswordSubmit} className="space-y-5 bg-white p-8 rounded-[2.5rem] border border-rose-gold/10 shadow-sm">
+          <div className="flex items-center gap-3 border-b border-warm-gray pb-4">
+            <KeyRound className="text-rose-gold" size={20} />
+            <div><h2 className="text-xs font-bold uppercase tracking-[0.2em] text-deep-taupe">Admin Password</h2><p className="mt-1 text-xs text-taupe">{passwordConfigured ? 'Change the Firebase Authentication password for the signed-in admin.' : 'Create your Firebase Authentication password for future admin logins.'}</p></div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {passwordConfigured && <label className="space-y-2"><span className="text-[10px] font-semibold uppercase tracking-widest text-taupe">Current password</span><input type="password" autoComplete="current-password" name="currentPassword" value={passwordForm.currentPassword} onChange={handlePasswordChange} className="w-full px-4 py-3 bg-warm-gray/30 rounded-xl text-sm outline-none focus:bg-white focus:ring-1 focus:ring-rose-gold/30" /></label>}
+            <label className="space-y-2"><span className="text-[10px] font-semibold uppercase tracking-widest text-taupe">{passwordConfigured ? 'New password' : 'Create password'}</span><input type="password" autoComplete="new-password" name="newPassword" value={passwordForm.newPassword} onChange={handlePasswordChange} className="w-full px-4 py-3 bg-warm-gray/30 rounded-xl text-sm outline-none focus:bg-white focus:ring-1 focus:ring-rose-gold/30" /></label>
+            <label className="space-y-2"><span className="text-[10px] font-semibold uppercase tracking-widest text-taupe">Confirm new password</span><input type="password" autoComplete="new-password" name="confirmPassword" value={passwordForm.confirmPassword} onChange={handlePasswordChange} className="w-full px-4 py-3 bg-warm-gray/30 rounded-xl text-sm outline-none focus:bg-white focus:ring-1 focus:ring-rose-gold/30" /></label>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-taupe">Passwords are sent directly to Firebase Authentication and are never stored in Firestore or logs.</p><button type="submit" disabled={savingPassword} className="btn-primary flex items-center gap-2 px-5 py-3 disabled:opacity-50">{savingPassword ? <Loader2 className="animate-spin" size={16} /> : <KeyRound size={16} />}{passwordConfigured ? 'Change Password' : 'Save First Password'}</button></div>
         </form>
       </div>
     </AdminLayout>

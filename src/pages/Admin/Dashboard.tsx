@@ -3,11 +3,7 @@ import AdminLayout from '../../components/AdminLayout';
 import { 
   Gem, 
   TrendingUp, 
-  Users, 
-  MessageCircle, 
   ArrowUpRight, 
-  ArrowDownRight,
-  Clock,
   ChevronRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -20,8 +16,6 @@ export default function Dashboard() {
     totalProducts: 0,
     activeProducts: 0,
     featuredProducts: 0,
-    whatsappClicks: null as number | null,
-    wishlistAdds: null as number | null,
   });
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -51,9 +45,7 @@ export default function Dashboard() {
 
   const statCards = [
     { name: 'Total Products', value: stats.totalProducts, icon: Gem, color: 'rose-gold', trend: 'Live', up: true },
-    { name: 'Active Listing', value: stats.activeProducts, icon: TrendingUp, color: 'rose-gold', trend: 'Live', up: true },
-    { name: 'WhatsApp Inquiries', value: stats.whatsappClicks, icon: MessageCircle, color: 'rose-gold', trend: 'Not configured', up: false },
-    { name: 'Wishlist Adds', value: stats.wishlistAdds, icon: Users, color: 'rose-gold', trend: 'Not configured', up: false },
+    { name: 'In-stock Products', value: stats.activeProducts, icon: TrendingUp, color: 'rose-gold', trend: 'Live', up: true },
   ];
 
   return (
@@ -64,14 +56,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-light text-deep-taupe uppercase tracking-widest">Dashboard Overview</h1>
             <p className="text-xs text-taupe tracking-widest uppercase">Welcome back to your boutique management</p>
           </div>
-          <div className="flex gap-4">
-            <button className="px-4 py-2 bg-white border border-rose-gold/10 rounded-xl text-xs font-medium text-taupe hover:border-rose-gold/30 transition-all">
-              Export Report
-            </button>
-            <button className="px-4 py-2 bg-rose-gold text-white rounded-xl text-xs font-medium shadow-md shadow-rose-gold/20 hover:bg-opacity-90 transition-all">
-              Generate Analytics
-            </button>
-          </div>
+
         </div>
 
         {/* Stats Grid */}
@@ -80,7 +65,7 @@ export default function Dashboard() {
             Dashboard product stats could not be loaded from Firestore. {loadError}
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {statCards.map((stat, idx) => (
             <motion.div
               key={stat.name}
@@ -94,7 +79,7 @@ export default function Dashboard() {
                   <stat.icon size={24} />
                 </div>
                 <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full ${stat.up ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                  {stat.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                  <ArrowUpRight size={12} />
                   {stat.trend}
                 </div>
               </div>
@@ -106,12 +91,11 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div>
           {/* Recent Products */}
-          <div className="lg:col-span-2 bg-white rounded-3xl border border-rose-gold/10 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-warm-gray flex justify-between items-center">
+          <div className="bg-white rounded-3xl border border-rose-gold/10 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-warm-gray">
               <h3 className="text-sm font-semibold text-deep-taupe uppercase tracking-widest">Recent Products</h3>
-              <button className="text-xs text-rose-gold hover:underline">View All</button>
             </div>
             <div className="divide-y divide-warm-gray">
               {recentProducts.map((product) => (
@@ -126,8 +110,8 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${product.active ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                      {product.active ? 'Active' : 'Inactive'}
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${product.quantity > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                      {product.quantity > 0 ? 'In stock' : 'Stockout'}
                     </span>
                     <ChevronRight size={16} className="text-taupe/40" />
                   </div>
@@ -139,23 +123,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Activity Feed */}
-          <div className="bg-white rounded-3xl border border-rose-gold/10 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-warm-gray">
-              <h3 className="text-sm font-semibold text-deep-taupe uppercase tracking-widest">Recent Activity</h3>
-            </div>
-            <div className="p-6 space-y-6">
-              <div className="flex gap-4">
-                <div className="w-8 h-8 rounded-full bg-blush flex items-center justify-center text-rose-gold shrink-0">
-                  <Clock size={14} />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-deep-taupe leading-relaxed">No telemetry feed configured yet.</p>
-                  <p className="text-[10px] text-taupe uppercase tracking-widest">Connect analytics events collection to show activity.</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </AdminLayout>

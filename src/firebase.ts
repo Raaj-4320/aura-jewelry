@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { logDB, logError, logSystem } from './utils/logger';
 
 const requiredFirebaseEnvVars = [
   'VITE_FIREBASE_API_KEY',
@@ -33,6 +34,9 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+logSystem('firebase_init_start', { hasProjectId: !!firebaseConfig.projectId });
 const app = initializeApp(firebaseConfig);
+logSystem('firebase_init_success', { projectId: firebaseConfig.projectId });
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+logDB('firestore_ready', { ok: true });
