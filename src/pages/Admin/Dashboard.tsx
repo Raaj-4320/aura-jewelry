@@ -1,163 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
-import { 
-  Gem, 
-  TrendingUp, 
-  Users, 
-  MessageCircle, 
-  ArrowUpRight, 
-  ArrowDownRight,
-  Clock,
-  ChevronRight
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, ArrowRight, Gem, PackageX, PanelsTopLeft, PlusCircle, Star, Tags, WalletCards } from 'lucide-react';
 import { motion } from 'motion/react';
+import AdminLayout from '../../components/AdminLayout';
 import { getAdminProducts } from '../../services/firebaseService';
 import { Product } from '../../types';
 import { formatPrice } from '../../lib/utils';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    totalProducts: 0,
-    activeProducts: 0,
-    featuredProducts: 0,
-    whatsappClicks: null as number | null,
-    wishlistAdds: null as number | null,
-  });
-  const [recentProducts, setRecentProducts] = useState<Product[]>([]);
-  const [loadError, setLoadError] = useState('');
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      setLoadError('');
-      try {
-        const products = await getAdminProducts();
-        if (products) {
-          setStats(prev => ({
-            ...prev,
-            totalProducts: products.length,
-            activeProducts: products.filter(p => p.active).length,
-            featuredProducts: products.filter(p => p.featured).length,
-          }));
-          setRecentProducts(products.slice(0, 5));
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to load dashboard products.';
-        console.error('ADMIN_DASHBOARD_LOAD_FAILED', message);
-        setLoadError(message);
-      }
-    };
-    fetchStats();
-  }, []);
-
-  const statCards = [
-    { name: 'Total Products', value: stats.totalProducts, icon: Gem, color: 'rose-gold', trend: 'Live', up: true },
-    { name: 'Active Listing', value: stats.activeProducts, icon: TrendingUp, color: 'rose-gold', trend: 'Live', up: true },
-    { name: 'WhatsApp Inquiries', value: stats.whatsappClicks, icon: MessageCircle, color: 'rose-gold', trend: 'Not configured', up: false },
-    { name: 'Wishlist Adds', value: stats.wishlistAdds, icon: Users, color: 'rose-gold', trend: 'Not configured', up: false },
-  ];
-
-  return (
-    <AdminLayout>
-      <div className="space-y-8">
-        <div className="flex justify-between items-end">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-light text-deep-taupe uppercase tracking-widest">Dashboard Overview</h1>
-            <p className="text-xs text-taupe tracking-widest uppercase">Welcome back to your boutique management</p>
-          </div>
-          <div className="flex gap-4">
-            <button className="px-4 py-2 bg-white border border-rose-gold/10 rounded-xl text-xs font-medium text-taupe hover:border-rose-gold/30 transition-all">
-              Export Report
-            </button>
-            <button className="px-4 py-2 bg-rose-gold text-white rounded-xl text-xs font-medium shadow-md shadow-rose-gold/20 hover:bg-opacity-90 transition-all">
-              Generate Analytics
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        {loadError && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-5 py-4 text-sm">
-            Dashboard product stats could not be loaded from Firestore. {loadError}
-          </div>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statCards.map((stat, idx) => (
-            <motion.div
-              key={stat.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-white p-6 rounded-3xl border border-rose-gold/10 shadow-sm"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-rose-gold-light/30 flex items-center justify-center text-rose-gold">
-                  <stat.icon size={24} />
-                </div>
-                <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full ${stat.up ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                  {stat.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                  {stat.trend}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-taupe uppercase tracking-widest">{stat.name}</p>
-                <p className="text-3xl font-light text-deep-taupe">{stat.value ?? '—'}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Products */}
-          <div className="lg:col-span-2 bg-white rounded-3xl border border-rose-gold/10 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-warm-gray flex justify-between items-center">
-              <h3 className="text-sm font-semibold text-deep-taupe uppercase tracking-widest">Recent Products</h3>
-              <button className="text-xs text-rose-gold hover:underline">View All</button>
-            </div>
-            <div className="divide-y divide-warm-gray">
-              {recentProducts.map((product) => (
-                <div key={product.id} className="p-4 flex items-center justify-between hover:bg-warm-gray/20 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-warm-gray">
-                      <img src={product.thumbnailImage} alt={product.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-deep-taupe">{product.name}</p>
-                      <p className="text-[10px] text-taupe uppercase tracking-widest">{product.category} • {formatPrice(product.price)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${product.active ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                      {product.active ? 'Active' : 'Inactive'}
-                    </span>
-                    <ChevronRight size={16} className="text-taupe/40" />
-                  </div>
-                </div>
-              ))}
-              {recentProducts.length === 0 && (
-                <div className="p-12 text-center text-taupe italic text-sm">No products added yet.</div>
-              )}
-            </div>
-          </div>
-
-          {/* Activity Feed */}
-          <div className="bg-white rounded-3xl border border-rose-gold/10 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-warm-gray">
-              <h3 className="text-sm font-semibold text-deep-taupe uppercase tracking-widest">Recent Activity</h3>
-            </div>
-            <div className="p-6 space-y-6">
-              <div className="flex gap-4">
-                <div className="w-8 h-8 rounded-full bg-blush flex items-center justify-center text-rose-gold shrink-0">
-                  <Clock size={14} />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-deep-taupe leading-relaxed">No telemetry feed configured yet.</p>
-                  <p className="text-[10px] text-taupe uppercase tracking-widest">Connect analytics events collection to show activity.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </AdminLayout>
-  );
+  const [products, setProducts] = useState<Product[]>([]); const [loadError, setLoadError] = useState(''); const [loading, setLoading] = useState(true);
+  useEffect(() => { getAdminProducts().then((data) => setProducts(data || [])).catch((error) => setLoadError(error instanceof Error ? error.message : 'Failed to load dashboard products.')).finally(() => setLoading(false)); }, []);
+  const insights = useMemo(() => {
+    const stockout = products.filter((product) => product.quantity <= 0); const lowStock = products.filter((product) => product.quantity > 0 && product.quantity <= 3); const featured = products.filter((product) => product.featured); const inventoryValue = products.reduce((total, product) => total + (Number(product.price) || 0) * Math.max(0, Number(product.quantity) || 0), 0);
+    const categoryCounts = (Object.entries(products.reduce<Record<string, number>>((result, product) => { const category = product.category || 'Uncategorized'; result[category] = (result[category] || 0) + 1; return result; }, {})) as Array<[string, number]>).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    return { stockout, lowStock, featured, inventoryValue, categoryCounts, inStock: products.length - stockout.length };
+  }, [products]);
+  const cards = [{ label: 'Total products', value: products.length, note: 'Complete catalog', icon: Gem, to: '/admin/products' }, { label: 'In stock', value: insights.inStock, note: 'Ready to sell', icon: WalletCards, to: '/admin/products?stock=in-stock' }, { label: 'Stockout', value: insights.stockout.length, note: 'Needs attention', icon: PackageX, to: '/admin/products?stock=stockout' }, { label: 'Low stock', value: insights.lowStock.length, note: '3 pieces or fewer', icon: AlertTriangle, to: '/admin/products' }];
+  const shortcuts = [{ label: 'Add a new product', note: 'Create a jewelry listing', icon: PlusCircle, to: '/admin/products/add' }, { label: 'Manage categories', note: 'Organize catalog navigation', icon: Tags, to: '/admin/categories' }, { label: 'Edit storefront', note: 'Preview and publish homepage', icon: PanelsTopLeft, to: '/admin/storefront' }];
+  return <AdminLayout><div className="space-y-6"><div><h1 className="text-2xl font-light uppercase tracking-widest text-deep-taupe">Dashboard overview</h1><p className="text-xs uppercase tracking-widest text-taupe">Inventory health and quick catalog actions</p></div>{loadError && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{loadError}</div>}{loading ? <div className="rounded-2xl bg-white p-6 text-sm text-taupe">Loading dashboard insights…</div> : <>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card, index) => <motion.div key={card.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .05 }}><Link to={card.to} className="block rounded-2xl border border-rose-gold/15 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-rose-gold/40"><div className="flex items-center justify-between"><card.icon className="text-rose-gold" size={22} /><ArrowRight className="text-taupe/50" size={16} /></div><p className="mt-5 text-3xl font-light text-deep-taupe">{card.value}</p><p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-taupe">{card.label}</p><p className="mt-1 text-xs text-taupe/70">{card.note}</p></Link></motion.div>)}</div>
+    <div className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]"><section className="overflow-hidden rounded-2xl border border-rose-gold/15 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-warm-gray p-5"><div><h2 className="text-sm font-bold uppercase tracking-widest text-deep-taupe">Inventory attention</h2><p className="text-xs text-taupe">Products that may need restocking.</p></div><Link to="/admin/products" className="text-xs font-semibold text-rose-gold">Open products</Link></div><div className="divide-y divide-warm-gray">{[...insights.stockout, ...insights.lowStock].slice(0, 6).map((product) => <Link key={product.id} to={`/admin/products/edit/${product.id}`} className="flex items-center justify-between gap-3 p-4 hover:bg-blush/40"><div className="flex items-center gap-3"><img src={product.thumbnailImage} alt="" className="h-11 w-11 rounded-lg object-cover" /><div><p className="text-sm font-semibold text-deep-taupe">{product.name}</p><p className="text-xs text-taupe">{product.category || 'Uncategorized'} · {formatPrice(product.price)}</p></div></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${product.quantity <= 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}`}>{product.quantity <= 0 ? 'Stockout' : `${product.quantity} left`}</span></Link>)}{!insights.stockout.length && !insights.lowStock.length && <p className="p-8 text-center text-sm text-taupe">Inventory looks healthy. No urgent restocks.</p>}</div></section><section className="rounded-2xl border border-rose-gold/15 bg-white p-5 shadow-sm"><h2 className="text-sm font-bold uppercase tracking-widest text-deep-taupe">Catalog value</h2><p className="mt-3 text-3xl font-light text-deep-taupe">{formatPrice(insights.inventoryValue)}</p><p className="text-xs text-taupe">Approximate in-stock retail value</p><div className="mt-6 border-t border-warm-gray pt-4"><p className="text-[10px] font-bold uppercase tracking-widest text-taupe">Featured pieces</p><p className="mt-1 flex items-center gap-2 text-xl text-deep-taupe"><Star size={16} className="text-rose-gold" />{insights.featured.length}</p></div></section></div>
+    <div className="grid gap-4 lg:grid-cols-2"><section className="rounded-2xl border border-rose-gold/15 bg-white p-5 shadow-sm"><h2 className="text-sm font-bold uppercase tracking-widest text-deep-taupe">Category mix</h2><div className="mt-4 space-y-3">{insights.categoryCounts.map(([category, count]) => <div key={category}><div className="flex justify-between text-xs text-taupe"><span className="uppercase">{category}</span><span>{count}</span></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-warm-gray"><div className="h-full rounded-full bg-rose-gold" style={{ width: `${Math.max(6, count / Math.max(1, products.length) * 100)}%` }} /></div></div>)}</div></section><section className="rounded-2xl border border-rose-gold/15 bg-white p-5 shadow-sm"><h2 className="text-sm font-bold uppercase tracking-widest text-deep-taupe">Quick actions</h2><div className="mt-3 grid gap-2">{shortcuts.map((shortcut) => <Link key={shortcut.to} to={shortcut.to} className="flex items-center gap-3 rounded-xl border border-warm-gray p-3 hover:border-rose-gold/30 hover:bg-blush/30"><shortcut.icon size={18} className="text-rose-gold" /><div><p className="text-sm font-semibold text-deep-taupe">{shortcut.label}</p><p className="text-xs text-taupe">{shortcut.note}</p></div><ArrowRight size={15} className="ml-auto text-taupe/50" /></Link>)}</div></section></div>
+  </>}</div></AdminLayout>;
 }

@@ -7,6 +7,7 @@ export interface Product {
   id: string;
   name: string;
   slug: string;
+  productCode?: string;
   descriptionHtml?: string;
   vendor?: string;
   tags?: string[];
@@ -26,6 +27,7 @@ export interface Product {
   material: string;
   careInstructions: string;
   price: number;
+  quantity: number;
   priceOnRequest: boolean;
   currency: string;
   featured: boolean;

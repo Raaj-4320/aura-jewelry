@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Filter, Search, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { Filter, Search, X, SlidersHorizontal } from 'lucide-react';
 import { Product } from '../types';
+import { logProduct } from '../utils/logger';
 import { getProducts } from '../services/firebaseService';
 import ProductCard from '../components/ProductCard';
-import { CATEGORIES, SUB_CATEGORIES } from '../constants';
+import ThemedSelect from '../components/ThemedSelect';
+import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { cn, normalizeCategory, normalizeSubcategory } from '../lib/utils';
 
 export default function Shop() {
+  const { categories, subcategories } = useCatalogCategories();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +30,7 @@ export default function Shop() {
       try {
         const data = await getProducts();
         setProducts(data || []);
+        logProduct('public_products_visible_count', { count: (data || []).length });
       } catch (error) {
         console.error(error);
         setProducts([]);
@@ -123,18 +127,7 @@ export default function Shop() {
               Filters
             </button>
 
-            <div className="relative flex-1 md:flex-none">
-              <select
-                value={sortBy}
-                onChange={(e) => updateFilter('sort', e.target.value)}
-                className="w-full appearance-none bg-white border border-rose-gold/10 px-6 py-3 rounded-2xl text-sm font-medium text-taupe focus:outline-none focus:border-rose-gold/40 cursor-pointer"
-              >
-                <option value="newest">Newest First</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-taupe/50 pointer-events-none" size={16} />
-            </div>
+            <ThemedSelect ariaLabel="Sort products" value={sortBy} onChange={(value) => updateFilter('sort', value)} className="min-w-48 flex-1 md:flex-none" options={[{ value: 'newest', label: 'Newest First' }, { value: 'price-low', label: 'Price: Low to High' }, { value: 'price-high', label: 'Price: High to Low' }]} />
           </div>
         </div>
 
@@ -161,7 +154,7 @@ export default function Shop() {
                     >
                       All
                     </button>
-                    {CATEGORIES.map(cat => (
+                    {categories.map(cat => (
                       <button
                         key={cat.id}
                         onClick={() => updateFilter('category', cat.slug)}
@@ -189,7 +182,7 @@ export default function Shop() {
                     >
                       All
                     </button>
-                    {SUB_CATEGORIES.map(sub => (
+                    {subcategories.map(sub => (
                       <button
                         key={sub.id}
                         onClick={() => updateFilter('subcategory', sub.id)}

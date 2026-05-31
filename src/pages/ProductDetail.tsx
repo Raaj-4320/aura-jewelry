@@ -18,7 +18,9 @@ import { getProductBySlug, getProducts } from '../services/firebaseService';
 import { formatPrice, cn } from '../lib/utils';
 import { useStoreSettings } from '../contexts/StoreSettingsContext';
 import ProductCard from '../components/ProductCard';
+import ProductImageCarouselModal from '../components/ProductImageCarouselModal';
 import toast from 'react-hot-toast';
+import { logDB, logError, logProduct, logRoute, logUI, logWhatsApp } from '../utils/logger';
 import { JEWELRY_IMAGE_FALLBACK } from '../constants';
 
 export default function ProductDetail() {
@@ -29,15 +31,20 @@ export default function ProductDetail() {
   const [loadError, setLoadError] = useState('');
   const [activeImage, setActiveImage] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const { settings } = useStoreSettings();
 
   useEffect(() => {
+    logRoute('route_rendered', { page: 'ProductDetail', path: window.location.pathname });
+    logRoute('product_detail_loaded', { slug });
     const fetchProduct = async () => {
       if (!slug) return;
       setLoading(true);
       try {
+        logProduct('product_detail_public_fetch_start', { slug });
         const data = await getProductBySlug(slug);
         if (data) {
+          logProduct('product_detail_public_fetch_success', { id: data.id, name: data.name, slug: data.slug, imageCount: (data.galleryImages||[]).length, active: data.active });
           setProduct(data);
           // Fetch related products
           const allProducts = await getProducts();
@@ -48,6 +55,7 @@ export default function ProductDetail() {
         }
       } catch (error) {
         console.error(error);
+        logProduct('product_detail_public_fetch_failure', { slug, error: error instanceof Error ? error.message : 'unknown' });
         setLoadError(error instanceof Error ? error.message : 'Unable to load product');
       } finally {
         setLoading(false);
@@ -79,7 +87,18 @@ export default function ProductDetail() {
     );
   }
 
-  const realImages = (product.galleryImages || []).filter(Boolean);
+  const rawProduct = product as any;
+  const imageObjects = Array.isArray(rawProduct.images)
+    ? rawProduct.images.map((image: any) => typeof image === 'string' ? image : image?.src || image?.url)
+    : [];
+  const realImages = [...new Set([
+    rawProduct.thumbnailImage,
+    rawProduct.mainImage,
+    rawProduct.image,
+    rawProduct.imageSrc,
+    ...(Array.isArray(rawProduct.galleryImages) ? rawProduct.galleryImages : []),
+    ...imageObjects,
+  ].filter(Boolean))] as string[];
   const images = realImages.length > 0 ? realImages : [JEWELRY_IMAGE_FALLBACK];
   const instagramUrl = product.instagramUrl || settings.instagramUrl;
   const siteBaseUrl = (import.meta.env.APP_URL || window.location.origin || '').replace(/\/$/, '');
@@ -102,6 +121,7 @@ export default function ProductDetail() {
     : '';
 
   const handleShare = () => {
+    logUI('product_share_clicked', { id: product.id, name: product.name, slug: product.slug });
     navigator.share?.({
       title: product.name,
       text: product.shortDescription,
@@ -114,6 +134,7 @@ export default function ProductDetail() {
 
   return (
     <div className="bg-ivory pb-20">
+      <ProductImageCarouselModal open={galleryOpen} images={images} title={product.name} initialIndex={activeImage} onClose={() => setGalleryOpen(false)} />
       {/* Breadcrumbs */}
       <div className="max-w-7xl mx-auto px-6 py-6 flex items-center gap-2 text-[10px] uppercase tracking-widest text-taupe/60">
         <Link to="/" className="hover:text-rose-gold">Home</Link>
@@ -138,7 +159,8 @@ export default function ProductDetail() {
                 transition={{ duration: 0.5 }}
                 src={images[activeImage] || JEWELRY_IMAGE_FALLBACK}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full cursor-zoom-in object-cover"
+                onClick={() => setGalleryOpen(true)}
                 referrerPolicy="no-referrer"
                 onError={(e) => { e.currentTarget.src = JEWELRY_IMAGE_FALLBACK; }}
               />
@@ -228,7 +250,7 @@ export default function ProductDetail() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               {whatsappUrl ? (
-                <a
+                <a onClick={() => { logUI('whatsapp_button_clicked', { id: product.id, name: product.name, slug: product.slug, productUrl, image: primaryImageUrl }); logWhatsApp('whatsapp_message_built', { includesName: whatsappMessageLines.join(' ').includes(product.name), includesUrl: !!productUrl, includesImage: !!primaryImageUrl, preview: whatsappMessageLines.join(' ').slice(0,120) }); }}
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
