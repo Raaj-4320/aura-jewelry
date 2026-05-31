@@ -19,6 +19,7 @@ import { formatPrice, cn } from '../lib/utils';
 import { useStoreSettings } from '../contexts/StoreSettingsContext';
 import ProductCard from '../components/ProductCard';
 import toast from 'react-hot-toast';
+import { logDB, logError, logProduct, logRoute, logUI, logWhatsApp } from '../utils/logger';
 import { JEWELRY_IMAGE_FALLBACK } from '../constants';
 
 export default function ProductDetail() {
@@ -32,12 +33,16 @@ export default function ProductDetail() {
   const { settings } = useStoreSettings();
 
   useEffect(() => {
+    logRoute('route_rendered', { page: 'ProductDetail', path: window.location.pathname });
+    logRoute('product_detail_loaded', { slug });
     const fetchProduct = async () => {
       if (!slug) return;
       setLoading(true);
       try {
+        logProduct('product_detail_public_fetch_start', { slug });
         const data = await getProductBySlug(slug);
         if (data) {
+          logProduct('product_detail_public_fetch_success', { id: data.id, name: data.name, slug: data.slug, imageCount: (data.galleryImages||[]).length, active: data.active });
           setProduct(data);
           // Fetch related products
           const allProducts = await getProducts();
@@ -48,6 +53,7 @@ export default function ProductDetail() {
         }
       } catch (error) {
         console.error(error);
+        logProduct('product_detail_public_fetch_failure', { slug, error: error instanceof Error ? error.message : 'unknown' });
         setLoadError(error instanceof Error ? error.message : 'Unable to load product');
       } finally {
         setLoading(false);
@@ -102,6 +108,7 @@ export default function ProductDetail() {
     : '';
 
   const handleShare = () => {
+    logUI('product_share_clicked', { id: product.id, name: product.name, slug: product.slug });
     navigator.share?.({
       title: product.name,
       text: product.shortDescription,
@@ -228,7 +235,7 @@ export default function ProductDetail() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               {whatsappUrl ? (
-                <a
+                <a onClick={() => { logUI('whatsapp_button_clicked', { id: product.id, name: product.name, slug: product.slug, productUrl, image: primaryImageUrl }); logWhatsApp('whatsapp_message_built', { includesName: whatsappMessageLines.join(' ').includes(product.name), includesUrl: !!productUrl, includesImage: !!primaryImageUrl, preview: whatsappMessageLines.join(' ').slice(0,120) }); }}
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"

@@ -16,6 +16,7 @@ const AdminProducts = lazy(() => import('./pages/Admin/Products'));
 const AdminAddProduct = lazy(() => import('./pages/Admin/AddProduct'));
 const BulkImport = lazy(() => import('./pages/Admin/BulkImport'));
 const AdminSettings = lazy(() => import('./pages/Admin/Settings'));
+const AdminCategories = lazy(() => import('./pages/Admin/Categories'));
 
 function LoadingFallback() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/admin/products/add" element={<RequireAdmin><AdminAddProduct /></RequireAdmin>} />
           <Route path="/admin/products/edit/:id" element={<RequireAdmin><AdminAddProduct /></RequireAdmin>} />
           <Route path="/admin/products/import" element={<RequireAdmin><BulkImport /></RequireAdmin>} />
+          <Route path="/admin/categories" element={<RequireAdmin><AdminCategories /></RequireAdmin>} />
           <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />
         </Routes>
       </Suspense>

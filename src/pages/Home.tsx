@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowRight, Star, Instagram } from 'lucide-react';
 import { Product } from '../types';
-import { getDisplayProducts } from '../services/catalogService';
+import { logProduct } from '../utils/logger';
+import { getProducts } from '../services/firebaseService';
 import ProductCard from '../components/ProductCard';
-import { CATEGORIES, JEWELRY_IMAGE_FALLBACK } from '../constants';
+import { JEWELRY_IMAGE_FALLBACK } from '../constants';
+import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { normalizeCategory, normalizeSubcategory } from '../lib/utils';
 import { useStoreSettings } from '../contexts/StoreSettingsContext';
 
@@ -42,12 +44,14 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const { settings } = useStoreSettings();
+  const { categories } = useCatalogCategories();
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const data = await getDisplayProducts();
+        const data = await getProducts();
         setAllProducts(data || []);
+        logProduct('public_products_visible_count', { count: (data || []).length });
       } catch (error) {
         console.error(error);
         setAllProducts([]);
@@ -82,14 +86,14 @@ export default function Home() {
 
   const categoryImageMap = useMemo(() => {
     const map: Record<string, string> = {};
-    CATEGORIES.forEach((cat) => {
+    categories.forEach((cat) => {
       const match = allProducts.find((p) => normalizeCategory(p.category) === cat.slug && !!p.thumbnailImage);
       if (match?.thumbnailImage) {
         map[cat.slug] = match.thumbnailImage;
       }
     });
     return map;
-  }, [allProducts]);
+  }, [allProducts, categories]);
 
   const hasBridalCategory = useMemo(
     () => allProducts.some((p) => normalizeCategory(p.category) === 'bridal-sets'),
@@ -102,16 +106,16 @@ export default function Home() {
   );
 
   const categoryCards = useMemo(() => {
-    const fromCatalog = CATEGORIES.filter((cat) =>
+    const fromCatalog = categories.filter((cat) =>
       allProducts.some((p) => normalizeCategory(p.category) === cat.slug)
     );
-    const fallback = CATEGORIES.filter((cat) => !fromCatalog.find((f) => f.slug === cat.slug));
+    const fallback = categories.filter((cat) => !fromCatalog.find((f) => f.slug === cat.slug));
     const cards = [...fromCatalog, ...fallback].slice(0, 4);
     return cards.map((cat) => ({
       ...cat,
       hasProducts: allProducts.some((p) => normalizeCategory(p.category) === cat.slug),
     }));
-  }, [allProducts]);
+  }, [allProducts, categories]);
 
   return (
     <div className="space-y-16 sm:space-y-20 pb-20">
@@ -192,7 +196,7 @@ export default function Home() {
           {loadError && (
             <section className="max-w-7xl mx-auto px-6">
               <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-5 py-4 text-sm">
-                Catalog could not be loaded from CSV source. {loadError}
+                Catalog could not be loaded from Firestore source. {loadError}
               </div>
             </section>
           )}

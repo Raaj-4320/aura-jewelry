@@ -10,12 +10,14 @@ import {
   Menu, 
   X,
   ChevronRight,
-  Bell
+  Bell,
+  Tags
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
+import { logAuth, logError, logUI } from '../utils/logger';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -40,11 +42,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
+  const isAdminAuthBypassEnabled = import.meta.env.VITE_BYPASS_ADMIN_AUTH === 'true';
+
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Products', path: '/admin/products', icon: Gem },
     { name: 'Add Product', path: '/admin/products/add', icon: PlusCircle },
     { name: 'Bulk Import', path: '/admin/products/import', icon: FileUp },
+    { name: 'Categories', path: '/admin/categories', icon: Tags },
     { name: 'Settings', path: '/admin/settings', icon: Settings },
   ];
 
@@ -136,6 +141,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Page Content */}
         <div className="p-8">
+          {isAdminAuthBypassEnabled && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm">
+              Admin auth bypass is enabled for testing. Do not use in production.
+            </div>
+          )}
           {children}
         </div>
       </main>
