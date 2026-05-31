@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, Instagram } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Product } from '../types';
+import { logUI } from '../utils/logger';
 import { formatPrice, cn } from '../lib/utils';
 import { useStoreSettings } from '../contexts/StoreSettingsContext';
 import { JEWELRY_IMAGE_FALLBACK } from '../constants';
@@ -46,7 +47,7 @@ export default function ProductCard({ product, isWishlisted, onToggleWishlist }:
     >
       {/* Image Container */}
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-warm-gray mb-4">
-        <Link to={`/product/${product.slug}`}>
+        <Link to={`/product/${product.slug}`} onClick={() => logUI('product_card_clicked', { id: product.id, name: product.name, slug: product.slug, target: `/product/${product.slug}` })}>
           <img
             src={imageSrc}
             alt={product.name}
@@ -120,7 +121,7 @@ export default function ProductCard({ product, isWishlisted, onToggleWishlist }:
       <div className="space-y-1 px-1">
         <div className="flex justify-between items-start">
           <h3 className="text-sm font-medium text-deep-taupe group-hover:text-rose-gold transition-colors">
-            <Link to={`/product/${product.slug}`}>{product.name}</Link>
+            <Link to={`/product/${product.slug}`} onClick={() => logUI('product_card_clicked', { id: product.id, name: product.name, slug: product.slug, target: `/product/${product.slug}` })}>{product.name}</Link>
           </h3>
           <span className="text-sm font-semibold text-rose-gold">
             {product.priceOnRequest ? "Price on Request" : formatPrice(product.price, product.currency)}

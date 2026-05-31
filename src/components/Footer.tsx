@@ -2,9 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Instagram, MessageCircle, Mail, MapPin, Phone } from 'lucide-react';
 import { useStoreSettings } from '../contexts/StoreSettingsContext';
+import { useCatalogCategories } from '../hooks/useCatalogCategories';
 
 export default function Footer() {
   const { settings } = useStoreSettings();
+  const { categories } = useCatalogCategories();
   const whatsappUrl = settings.whatsappNumber ? `https://wa.me/${settings.whatsappNumber}` : '';
 
   return (
@@ -40,10 +42,9 @@ export default function Footer() {
           <h4 className="text-xs font-semibold tracking-widest uppercase text-deep-taupe mb-6">Shop</h4>
           <ul className="space-y-4">
             <li><Link to="/shop" className="text-sm text-taupe hover:text-rose-gold transition-colors">All Collections</Link></li>
-            <li><Link to="/shop?category=necklaces" className="text-sm text-taupe hover:text-rose-gold transition-colors">Necklaces</Link></li>
-            <li><Link to="/shop?category=earrings" className="text-sm text-taupe hover:text-rose-gold transition-colors">Earrings</Link></li>
-            <li><Link to="/shop?category=rings" className="text-sm text-taupe hover:text-rose-gold transition-colors">Rings</Link></li>
-            <li><Link to="/shop?category=bracelets" className="text-sm text-taupe hover:text-rose-gold transition-colors">Bracelets</Link></li>
+            {categories.slice(0, 4).map((category) => (
+              <li key={category.id}><Link to={`/shop?category=${category.slug}`} className="text-sm text-taupe hover:text-rose-gold transition-colors">{category.name}</Link></li>
+            ))}
           </ul>
         </div>
 

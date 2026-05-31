@@ -17,6 +17,8 @@
         "galleryImages": { "type": "array", "items": { "type": "string" }, "description": "Additional image URLs" },
         "featured": { "type": "boolean" },
         "active": { "type": "boolean" },
+        "quantity": { "type": "number", "description": "Available stock quantity" },
+        "status": { "type": "string", "enum": ["in-stock", "stockout"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "slug", "category", "price", "thumbnailImage"]
@@ -42,8 +44,27 @@
         "brandDescription": { "type": "string" },
         "whatsappNumber": { "type": "string" },
         "instagramUrl": { "type": "string" },
+        "passwordConfigured": { "type": "boolean", "description": "Non-sensitive marker indicating that the admin created a Firebase Authentication password" },
         "cloudinaryCloudName": { "type": "string" },
         "cloudinaryUploadPreset": { "type": "string" }
+      }
+    },
+    "HomepageContent": {
+      "title": "Homepage Content",
+      "description": "Admin-managed homepage hero carousel and ordered collection sections",
+      "type": "object",
+      "properties": {
+        "version": { "type": "number" },
+        "heroEnabled": { "type": "boolean" },
+        "heroAutoplaySeconds": { "type": "number" },
+        "heroSlides": { "type": "array", "description": "Editable Cloudinary hero slides with text and button links" },
+        "categoriesEnabled": { "type": "boolean" },
+        "categoriesTitle": { "type": "string" },
+        "categoryLimit": { "type": "number" },
+        "sections": { "type": "array", "description": "Ordered homepage collection blocks with visibility and collection selection" },
+        "quoteEnabled": { "type": "boolean" },
+        "quoteText": { "type": "string" },
+        "instagramEnabled": { "type": "boolean" }
       }
     }
   },
@@ -59,6 +80,10 @@
     "settings": {
       "schema": "Settings",
       "description": "Global application settings (stored in 'general' doc)"
+    },
+    "homepageSettings": {
+      "schema": "HomepageContent",
+      "description": "Homepage editor content stored in the public-readable, admin-writable settings/homepage document"
     }
   }
 }
